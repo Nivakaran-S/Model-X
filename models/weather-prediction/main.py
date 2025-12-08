@@ -5,20 +5,22 @@ Can run data collection, training, or prediction independently
 """
 import os
 import sys
-import logging
+import logging  # Import standard library BEFORE path manipulation
 import argparse
 from pathlib import Path
 from datetime import datetime
 
-# Setup paths
-PIPELINE_ROOT = Path(__file__).parent
-sys.path.insert(0, str(PIPELINE_ROOT / "src"))
-
+# CRITICAL: Configure logging BEFORE adding src/ to path
+# (src/logging/ directory would otherwise shadow the standard module)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("weather_prediction")
+
+# Setup paths - AFTER logging is configured
+PIPELINE_ROOT = Path(__file__).parent
+sys.path.insert(0, str(PIPELINE_ROOT / "src"))
 
 
 def run_data_ingestion(months: int = 12):

@@ -404,45 +404,94 @@ class SocialAgentNode:
     
     def generate_llm_summary(self, state: SocialAgentState) -> Dict[str, Any]:
         """
-        Module 3B: Use Groq LLM to generate executive summary
+        Module 3B: Use Groq LLM to generate executive summary AND structured insights
         """
-        print("[MODULE 3B] Generating LLM Summary")
+        print("[MODULE 3B] Generating LLM Summary + Structured Insights")
         
         structured_feeds = state.get("structured_output", {})
+        llm_summary = "AI summary currently unavailable."
+        llm_insights = []
         
         try:
-            summary_prompt = f"""Analyze the following social intelligence data and create a concise executive summary of trending topics, events, and people.
-
-Data Summary:
-- Sri Lanka Trending: {len(structured_feeds.get('sri lanka', []))} items
-- Asia Trending: {len(structured_feeds.get('asia', []))} items
-- World Trending: {len(structured_feeds.get('world', []))} items
-
-Sample Data:
-{json.dumps(structured_feeds, indent=2)[:2000]}
-
-Generate a brief (3-5 sentences) executive summary highlighting the most important trending topics, events, and social developments."""
-
-            llm_response = self.llm.invoke(summary_prompt)
-            llm_summary = llm_response.content if hasattr(llm_response, 'content') else str(llm_response)
+            # Collect sample posts for analysis
+            all_posts = []
+            for region, posts in structured_feeds.items():
+                for p in posts[:5]:  # Top 5 per region
+                    text = p.get("text", "") or p.get("title", "")
+                    if text and len(text) > 20:
+                        all_posts.append(f"[{region.upper()}] {text[:200]}")
             
-            print("  ✓ LLM Summary Generated")
+            if not all_posts:
+                return {"llm_summary": llm_summary, "llm_insights": []}
             
+            posts_text = "\n".join(all_posts[:15])
+            
+            # Generate summary AND structured insights
+            analysis_prompt = f"""Analyze these social media posts from Sri Lanka and the region. Generate:
+1. A 3-sentence executive summary of key trends
+2. Up to 5 unique intelligence insights
+
+Posts:
+{posts_text}
+
+Respond in this exact JSON format:
+{{
+    "executive_summary": "Brief 3-sentence summary of key social trends and developments",
+    "insights": [
+        {{"summary": "Unique insight #1 (not copying post text)", "severity": "low/medium/high", "impact_type": "risk/opportunity"}},
+        {{"summary": "Unique insight #2", "severity": "low/medium/high", "impact_type": "risk/opportunity"}}
+    ]
+}}
+
+Rules:
+- Generate NEW insights, don't just copy post text
+- Identify patterns and emerging trends
+- Classify severity based on potential impact
+- Mark positive developments as "opportunity", concerning ones as "risk"
+
+JSON only, no explanation:"""
+
+            llm_response = self.llm.invoke(analysis_prompt)
+            content = llm_response.content if hasattr(llm_response, 'content') else str(llm_response)
+            
+            # Parse JSON response
+            import re
+            content = content.strip()
+            if content.startswith("```"):
+                content = re.sub(r'^```\w*\n?', '', content)
+                content = re.sub(r'\n?```$', '', content)
+            
+            result = json.loads(content)
+            llm_summary = result.get("executive_summary", llm_summary)
+            llm_insights = result.get("insights", [])
+            
+            print(f"  ✓ LLM generated {len(llm_insights)} unique insights")
+            
+        except json.JSONDecodeError as e:
+            print(f"  ⚠️ JSON parse error: {e}")
+            # Fallback to simple summary
+            try:
+                fallback_prompt = f"Summarize these social media trends in 3 sentences:\n{posts_text[:1500]}"
+                response = self.llm.invoke(fallback_prompt)
+                llm_summary = response.content if hasattr(response, 'content') else str(response)
+            except:
+                pass
         except Exception as e:
             print(f"  ⚠️ LLM Error: {e}")
-            llm_summary = "AI summary currently unavailable."
         
         return {
-            "llm_summary": llm_summary
+            "llm_summary": llm_summary,
+            "llm_insights": llm_insights
         }
     
     def format_final_output(self, state: SocialAgentState) -> Dict[str, Any]:
         """
-        Module 3C: Format final feed output
+        Module 3C: Format final feed output with LLM-enhanced insights
         """
         print("[MODULE 3C] Formatting Final Output")
         
         llm_summary = state.get("llm_summary", "No summary available")
+        llm_insights = state.get("llm_insights", [])  # NEW: Get LLM-generated insights
         structured_feeds = state.get("structured_output", {})
         
         trending_count = len([r for r in state.get("worker_results", []) if r.get("category") == "trending"])
@@ -483,91 +532,81 @@ Monitoring social sentiment, trending topics, events, and people across:
 Source: Multi-platform aggregation (Twitter, Facebook, LinkedIn, Instagram, Reddit)
 """
         
-        # Create list for per-region/topic domain_insights (FRONTEND COMPATIBLE)
+        # Create list for domain_insights (FRONTEND COMPATIBLE)
         domain_insights = []
         timestamp = datetime.utcnow().isoformat()
         
-        # Sri Lankan districts for geographic tagging
-        districts = [
-            "colombo", "gampaha", "kalutara", "kandy", "matale", 
-            "nuwara eliya", "galle", "matara", "hambantota", 
-            "jaffna", "kilinochchi", "mannar", "mullaitivu", "vavuniya",
-            "puttalam", "kurunegala", "anuradhapura", "polonnaruwa",
-            "badulla", "monaragala", "ratnapura", "kegalle",
-            "ampara", "batticaloa", "trincomalee"
-        ]
+        # PRIORITY 1: Add LLM-generated unique insights (these are curated and unique)
+        for insight in llm_insights:
+            if isinstance(insight, dict) and insight.get("summary"):
+                domain_insights.append({
+                    "source_event_id": str(uuid.uuid4()),
+                    "domain": "social",
+                    "summary": f"🔍 {insight.get('summary', '')}",  # Mark as AI-analyzed
+                    "severity": insight.get("severity", "medium"),
+                    "impact_type": insight.get("impact_type", "risk"),
+                    "timestamp": timestamp,
+                    "is_llm_generated": True  # Flag for frontend
+                })
         
-        # 1. Create per-item Sri Lanka social insights
-        sri_lanka_data = structured_feeds.get("sri lanka", [])
-        for post in sri_lanka_data[:15]:
-            post_text = post.get("text", "") or post.get("title", "")
-            if not post_text or len(post_text) < 10:
-                continue
+        print(f"  ✓ Added {len(llm_insights)} LLM-generated insights")
+        
+        # PRIORITY 2: Add top raw posts only if we need more (fallback)
+        # Only add raw posts if LLM didn't generate enough insights
+        if len(domain_insights) < 5:
+            # Sri Lankan districts for geographic tagging
+            districts = [
+                "colombo", "gampaha", "kalutara", "kandy", "matale", 
+                "nuwara eliya", "galle", "matara", "hambantota", 
+                "jaffna", "kilinochchi", "mannar", "mullaitivu", "vavuniya",
+                "puttalam", "kurunegala", "anuradhapura", "polonnaruwa",
+                "badulla", "monaragala", "ratnapura", "kegalle",
+                "ampara", "batticaloa", "trincomalee"
+            ]
             
-            # Try to detect district from post text
-            detected_district = "Sri Lanka"
-            for district in districts:
-                if district.lower() in post_text.lower():
-                    detected_district = district.title()
-                    break
-            
-            # Determine severity based on keywords
-            severity = "low"
-            if any(kw in post_text.lower() for kw in ["protest", "riot", "emergency", "violence", "crisis"]):
-                severity = "high"
-            elif any(kw in post_text.lower() for kw in ["trending", "viral", "breaking", "update"]):
-                severity = "medium"
-            
-            domain_insights.append({
-                "source_event_id": str(uuid.uuid4()),
-                "domain": "social",
-                "summary": f"{detected_district}: {post_text[:200]}",
-                "severity": severity,
-                "impact_type": "risk" if severity in ["high", "medium"] else "opportunity",
-                "timestamp": timestamp
-            })
+            # Add Sri Lanka posts as fallback
+            sri_lanka_data = structured_feeds.get("sri lanka", [])
+            for post in sri_lanka_data[:5]:
+                post_text = post.get("text", "") or post.get("title", "")
+                if not post_text or len(post_text) < 20:
+                    continue
+                
+                # Detect district
+                detected_district = "Sri Lanka"
+                for district in districts:
+                    if district.lower() in post_text.lower():
+                        detected_district = district.title()
+                        break
+                
+                # Determine severity
+                severity = "low"
+                if any(kw in post_text.lower() for kw in ["protest", "riot", "emergency", "violence", "crisis"]):
+                    severity = "high"
+                elif any(kw in post_text.lower() for kw in ["trending", "viral", "breaking", "update"]):
+                    severity = "medium"
+                
+                domain_insights.append({
+                    "source_event_id": str(uuid.uuid4()),
+                    "domain": "social",
+                    "summary": f"{detected_district}: {post_text[:200]}",
+                    "severity": severity,
+                    "impact_type": "risk" if severity in ["high", "medium"] else "opportunity",
+                    "timestamp": timestamp,
+                    "is_llm_generated": False
+                })
         
-        # 2. Create Asia regional insights
-        asia_data = structured_feeds.get("asia", [])
-        for post in asia_data[:5]:
-            post_text = post.get("text", "") or post.get("title", "")
-            if not post_text or len(post_text) < 10:
-                continue
-            domain_insights.append({
-                "source_event_id": str(uuid.uuid4()),
-                "domain": "social",
-                "summary": f"Asia Regional: {post_text[:200]}",
-                "severity": "medium",
-                "impact_type": "risk",
-                "timestamp": timestamp
-            })
-        
-        # 3. Create World insights
-        world_data = structured_feeds.get("world", [])
-        for post in world_data[:5]:
-            post_text = post.get("text", "") or post.get("title", "")
-            if not post_text or len(post_text) < 10:
-                continue
-            domain_insights.append({
-                "source_event_id": str(uuid.uuid4()),
-                "domain": "social",
-                "summary": f"Global: {post_text[:200]}",
-                "severity": "low",
-                "impact_type": "opportunity",
-                "timestamp": timestamp
-            })
-        
-        # 4. Add executive summary insight
+        # Add executive summary insight
         domain_insights.append({
             "source_event_id": str(uuid.uuid4()),
             "structured_data": structured_feeds,
             "domain": "social",
-            "summary": f"Sri Lanka Social Intelligence Summary: {llm_summary[:300]}",
+            "summary": f"📊 Social Intelligence Summary: {llm_summary[:300]}",
             "severity": "medium",
-            "impact_type": "risk"
+            "impact_type": "risk",
+            "is_llm_generated": True
         })
         
-        print(f"  ✓ Created {len(domain_insights)} social intelligence insights")
+        print(f"  ✓ Created {len(domain_insights)} total social intelligence insights")
         
         return {
             "final_feed": bulletin,

@@ -10,6 +10,7 @@ dependencies = [
     "fastapi>=0.122.0",
     "mlflow>=3.6.0",
     "numpy>=2.3.5",
+    "optuna>=4.6.0",
     "pandas>=2.3.3",
     "pyaml>=25.7.0",
     "pymongo[srv]>=4.15.4",

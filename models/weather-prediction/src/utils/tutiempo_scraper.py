@@ -175,19 +175,32 @@ class TutiempoScraper:
             DataFrame with all historical records
         """
         all_records = []
+        
+        # IMPORTANT: TuTiempo has data publication delay of ~2-3 months
+        # Start from 3 months ago to avoid 404 errors on recent months
         current = datetime.now()
+        start_date = current - timedelta(days=90)  # Start 3 months ago
+        
+        consecutive_failures = 0
+        max_consecutive_failures = 3
         
         for i in range(months):
-            target_date = current - timedelta(days=30 * i)
+            target_date = start_date - timedelta(days=30 * i)
             year = target_date.year
             month = target_date.month
             
             records = self.scrape_month(station_code, year, month)
             
-            for r in records:
-                r["station_name"] = station_name
-            
-            all_records.extend(records)
+            if not records:
+                consecutive_failures += 1
+                if consecutive_failures >= max_consecutive_failures:
+                    logger.warning(f"[TUTIEMPO] {max_consecutive_failures} consecutive failures for {station_name}, stopping")
+                    break
+            else:
+                consecutive_failures = 0  # Reset on success
+                for r in records:
+                    r["station_name"] = station_name
+                all_records.extend(records)
             
             # Be nice to the server
             time.sleep(1)

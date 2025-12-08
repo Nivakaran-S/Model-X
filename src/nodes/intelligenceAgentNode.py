@@ -396,16 +396,19 @@ class IntelligenceAgentNode:
     
     def generate_llm_summary(self, state: IntelligenceAgentState) -> Dict[str, Any]:
         """
-        Generate competitive intelligence summary using LLM
+        Generate competitive intelligence summary AND structured insights using LLM
         """
-        print("[MODULE 3B] Generating LLM Summary")
+        print("[MODULE 3B] Generating LLM Summary + Competitive Insights")
         
         all_results = state.get("worker_results", [])
         profile_feeds = state.get("profile_feeds", {})
         competitor_feeds = state.get("competitor_feeds", {})
         product_feeds = state.get("product_review_feeds", {})
         
-        # Prepare summary prompt
+        llm_summary = "Competitive intelligence summary unavailable."
+        llm_insights = []
+        
+        # Prepare summary data
         summary_data = {
             "total_results": len(all_results),
             "profiles_monitored": list(profile_feeds.keys()),
@@ -415,42 +418,90 @@ class IntelligenceAgentNode:
             "global_competitors": len(state.get("global_intel", []))
         }
         
-        prompt = f"""
-        Analyze this competitive intelligence data and provide a strategic summary.
+        # Collect sample data for LLM analysis
+        sample_posts = []
+        for profile, posts in profile_feeds.items():
+            if isinstance(posts, list):
+                for p in posts[:2]:
+                    text = p.get("text", "") or p.get("title", "") or p.get("raw_content", "")[:200]
+                    if text:
+                        sample_posts.append(f"[PROFILE: {profile}] {text[:150]}")
         
-        Data Overview:
-        - Total intelligence collected: {summary_data['total_results']} items
-        - Competitor profiles monitored: {', '.join(summary_data['profiles_monitored'])}
-        - Competitor mentions tracked: {', '.join(summary_data['competitors_tracked'])}
-        - Products analyzed: {', '.join(summary_data['products_analyzed'])}
-        - Local market intelligence: {summary_data['local_competitors']} items
-        - Global market intelligence: {summary_data['global_competitors']} items
+        for competitor, posts in competitor_feeds.items():
+            if isinstance(posts, list):
+                for p in posts[:2]:
+                    text = p.get("text", "") or p.get("title", "") or p.get("raw_content", "")[:200]
+                    if text:
+                        sample_posts.append(f"[COMPETITOR: {competitor}] {text[:150]}")
         
-        Provide:
-        1. Key competitive insights
-        2. Market trends observed
-        3. Threats and opportunities
-        4. Recommended actions
+        posts_text = "\n".join(sample_posts[:10]) if sample_posts else "No detailed data available"
         
-        Keep it concise and actionable.
-        """
-        
+        prompt = f"""Analyze this competitive intelligence data and generate:
+1. A strategic 3-sentence executive summary
+2. Up to 5 unique business intelligence insights
+
+Data Overview:
+- Total intelligence: {summary_data['total_results']} items
+- Competitors tracked: {', '.join(summary_data['competitors_tracked']) or 'None'}
+- Products analyzed: {', '.join(summary_data['products_analyzed']) or 'None'}
+
+Sample Data:
+{posts_text}
+
+Respond in this exact JSON format:
+{{
+    "executive_summary": "Strategic 3-sentence summary of competitive landscape",
+    "insights": [
+        {{"summary": "Unique competitive insight #1", "severity": "low/medium/high", "impact_type": "risk/opportunity"}},
+        {{"summary": "Unique competitive insight #2", "severity": "low/medium/high", "impact_type": "risk/opportunity"}}
+    ]
+}}
+
+Rules:
+- Generate actionable business intelligence, not just data descriptions
+- Identify competitive threats as "risk", business opportunities as "opportunity"
+- Severity: high=urgent action needed, medium=monitor closely, low=informational
+
+JSON only:"""
+
         try:
             response = self.llm.invoke(prompt)
-            llm_summary = response.content if hasattr(response, 'content') else str(response)
-            print("  ✓ Generated LLM summary")
+            content = response.content if hasattr(response, 'content') else str(response)
+            
+            # Parse JSON response
+            import re
+            content = content.strip()
+            if content.startswith("```"):
+                content = re.sub(r'^```\w*\n?', '', content)
+                content = re.sub(r'\n?```$', '', content)
+            
+            result = json.loads(content)
+            llm_summary = result.get("executive_summary", llm_summary)
+            llm_insights = result.get("insights", [])
+            
+            print(f"  ✓ LLM generated {len(llm_insights)} competitive insights")
+            
+        except json.JSONDecodeError as e:
+            print(f"  ⚠️ JSON parse error: {e}")
+            # Fallback to simple summary
+            try:
+                fallback_prompt = f"Summarize this competitive intelligence in 3 sentences:\n{posts_text[:1500]}"
+                response = self.llm.invoke(fallback_prompt)
+                llm_summary = response.content if hasattr(response, 'content') else str(response)
+            except:
+                pass
         except Exception as e:
-            llm_summary = f"LLM Summary unavailable: {e}"
             print(f"  ⚠️ LLM error: {e}")
         
         return {
             "llm_summary": llm_summary,
+            "llm_insights": llm_insights,
             "structured_output": summary_data
         }
     
     def format_final_output(self, state: IntelligenceAgentState) -> Dict[str, Any]:
         """
-        Module 3C: Format final competitive intelligence feed
+        Module 3C: Format final competitive intelligence feed with LLM-enhanced insights
         """
         print("[MODULE 3C] Formatting Final Output")
         
@@ -458,6 +509,7 @@ class IntelligenceAgentNode:
         competitor_feeds = state.get("competitor_feeds", {})
         product_feeds = state.get("product_review_feeds", {})
         llm_summary = state.get("llm_summary", "No summary available")
+        llm_insights = state.get("llm_insights", [])  # NEW: Get LLM-generated insights
         local_intel = state.get("local_intel", [])
         global_intel = state.get("global_intel", [])
         
@@ -491,84 +543,66 @@ Source: Multi-platform competitive intelligence (Twitter, Facebook, LinkedIn, In
 """
         
         # Create integration output with structured data
-        # FIXED: Pass actual feed data, not just counts
         structured_feeds = {
-            "profiles": profile_feeds,  # Full profile data, not counts
-            "competitors": competitor_feeds,  # Full competitor data
-            "products": product_feeds,  # Full product review data
+            "profiles": profile_feeds,
+            "competitors": competitor_feeds,
+            "products": product_feeds,
             "local_intel": local_intel,
             "global_intel": global_intel
         }
         
-        # Create list for per-item domain_insights (FRONTEND COMPATIBLE)
+        # Create list for domain_insights (FRONTEND COMPATIBLE)
         domain_insights = []
         timestamp = datetime.utcnow().isoformat()
         
-        # 1. Create per-profile intelligence insights
-        for profile_name, posts in profile_feeds.items():
-            if not isinstance(posts, list):
-                continue
-            for post in posts[:5]:
-                post_text = post.get("text", "") or post.get("title", "")
-                if not post_text or len(post_text) < 10:
-                    continue
+        # PRIORITY 1: Add LLM-generated unique insights (curated and actionable)
+        for insight in llm_insights:
+            if isinstance(insight, dict) and insight.get("summary"):
                 domain_insights.append({
                     "source_event_id": str(uuid.uuid4()),
                     "domain": "intelligence",
-                    "summary": f"Profile ({profile_name}): {post_text[:200]}",
-                    "severity": "medium",
-                    "impact_type": "risk",
-                    "timestamp": timestamp
+                    "summary": f"🎯 {insight.get('summary', '')}",  # Mark as AI-analyzed
+                    "severity": insight.get("severity", "medium"),
+                    "impact_type": insight.get("impact_type", "risk"),
+                    "timestamp": timestamp,
+                    "is_llm_generated": True
                 })
         
-        # 2. Create per-competitor intelligence insights
-        for competitor, posts in competitor_feeds.items():
-            if not isinstance(posts, list):
-                continue
-            for post in posts[:5]:
-                post_text = post.get("text", "") or post.get("title", "")
-                if not post_text or len(post_text) < 10:
+        print(f"  ✓ Added {len(llm_insights)} LLM-generated competitive insights")
+        
+        # PRIORITY 2: Add raw data only as fallback if LLM didn't generate enough
+        if len(domain_insights) < 5:
+            # Add competitor insights as fallback
+            for competitor, posts in competitor_feeds.items():
+                if not isinstance(posts, list):
                     continue
-                severity = "high" if any(kw in post_text.lower() for kw in ["launch", "expansion", "acquisition"]) else "medium"
-                domain_insights.append({
-                    "source_event_id": str(uuid.uuid4()),
-                    "domain": "intelligence",
-                    "summary": f"Competitor ({competitor}): {post_text[:200]}",
-                    "severity": severity,
-                    "impact_type": "risk",
-                    "timestamp": timestamp
-                })
+                for post in posts[:3]:
+                    post_text = post.get("text", "") or post.get("title", "")
+                    if not post_text or len(post_text) < 20:
+                        continue
+                    severity = "high" if any(kw in post_text.lower() for kw in ["launch", "expansion", "acquisition"]) else "medium"
+                    domain_insights.append({
+                        "source_event_id": str(uuid.uuid4()),
+                        "domain": "intelligence",
+                        "summary": f"Competitor ({competitor}): {post_text[:200]}",
+                        "severity": severity,
+                        "impact_type": "risk",
+                        "timestamp": timestamp,
+                        "is_llm_generated": False
+                    })
         
-        # 3. Create per-product review insights
-        for product, reviews in product_feeds.items():
-            if not isinstance(reviews, list):
-                continue
-            for review in reviews[:5]:
-                review_text = review.get("text", "") or review.get("title", "")
-                if not review_text or len(review_text) < 10:
-                    continue
-                severity = "low" if any(kw in review_text.lower() for kw in ["great", "excellent", "love"]) else "medium"
-                impact = "opportunity" if severity == "low" else "risk"
-                domain_insights.append({
-                    "source_event_id": str(uuid.uuid4()),
-                    "domain": "intelligence",
-                    "summary": f"Product Review ({product}): {review_text[:200]}",
-                    "severity": severity,
-                    "impact_type": impact,
-                    "timestamp": timestamp
-                })
-        
-        # 4. Add executive summary insight
+        # Add executive summary insight
         domain_insights.append({
             "source_event_id": str(uuid.uuid4()),
             "structured_data": structured_feeds,
             "domain": "intelligence",
-            "summary": f"Business Intelligence Summary: {llm_summary[:300]}",
+            "summary": f"📊 Business Intelligence Summary: {llm_summary[:300]}",
             "severity": "medium",
-            "impact_type": "risk"
+            "impact_type": "risk",
+            "is_llm_generated": True
         })
         
-        print(f"  ✓ Created {len(domain_insights)} intelligence insights")
+        print(f"  ✓ Created {len(domain_insights)} total intelligence insights")
         
         return {
             "final_feed": bulletin,

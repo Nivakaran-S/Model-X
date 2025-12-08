@@ -439,21 +439,15 @@ def scrape_rivernet_impl(
                 main_html = page.content()
                 main_soup = BeautifulSoup(main_html, "html.parser")
                 
-                # Look for any alert/warning text on main page
-                page_text = main_soup.get_text(separator=" ", strip=True)
-                alert_keywords = ["warning", "alert", "flood", "danger", "high", "rising"]
-                for keyword in alert_keywords:
-                    if keyword.lower() in page_text.lower():
-                        # Extract context around keyword
-                        match = re.search(rf'.{{0,100}}{keyword}.{{0,100}}', page_text, re.I)
-                        if match:
-                            alert_text = match.group(0).strip()
-                            if len(alert_text) > 20 and alert_text not in [a.get("text") for a in results["alerts"]]:
-                                results["alerts"].append({
-                                    "text": alert_text,
-                                    "severity": "high" if keyword in ["danger", "flood"] else "medium",
-                                    "source": "rivernet.lk main page"
-                                })
+                # NOTE: Disabled loose keyword extraction - was causing false positives
+                # Real flood alerts will be determined from individual river page status
+                # The previous alert_keywords approach matched generic site text like
+                # "warning: javascript required" causing fake alerts
+                
+                # If we need main page alerts, look for specific alert banner elements
+                # alert_banners = main_soup.select(".alert-banner, .flood-warning, .critical-notice")
+                # for banner in alert_banners:
+                #     results["alerts"].append({...})
                 
                 logger.info("[RIVERNET] Main page loaded successfully")
                 
@@ -518,26 +512,43 @@ def scrape_rivernet_impl(
                             except (ValueError, IndexError):
                                 continue
                     
-                    # Determine status based on keywords (refined to avoid false positives)
+                    # Determine status based on keywords (STRICTER to avoid false positives)
                     text_lower = page_text.lower()
                     
-                    # Default to normal
+                    # Default to normal - only escalate if clear flood indicators
                     river_data["status"] = "normal"
                     
-                    # DANGER / CRITICAL
-                    if any(w in text_lower for w in ["major flood", "danger level", "critical level", "red alert", "evacuate", "extreme flood"]):
+                    # CRITICAL: Only consider keywords in FLOOD CONTEXT
+                    # Look for phrases, not just words, to avoid false positives
+                    
+                    # DANGER / CRITICAL - Very specific phrases only
+                    danger_phrases = [
+                        "major flood", "danger level exceeded", "critical flood",
+                        "red alert", "evacuate immediately", "extreme flood",
+                        "water level exceeds danger", "above danger level"
+                    ]
+                    if any(phrase in text_lower for phrase in danger_phrases):
                         river_data["status"] = "danger"
                         
-                    # WARNING (Stricter: removed generic "high", "alert")
-                    elif any(w in text_lower for w in ["minor flood", "warning level", "flood alert", "amber alert", "high risk", "flood warning"]):
+                    # WARNING - Specific flood warning phrases
+                    elif any(phrase in text_lower for phrase in [
+                        "minor flood", "warning level exceeded", "flood alert issued",
+                        "amber alert", "approaching warning level", 
+                        "water level exceeds warning", "above warning level"
+                    ]):
                         river_data["status"] = "warning"
                         
-                    # RISING
-                    elif any(w in text_lower for w in ["water level rising", "rising trend", "level is rising"]):
+                    # RISING - Only if explicitly rising
+                    elif any(phrase in text_lower for phrase in [
+                        "water level rising", "rising trend detected", 
+                        "level is rising rapidly", "increasing water level"
+                    ]):
                         river_data["status"] = "rising"
                     
-                    # explicitly check for normal keywords to confirm (optional, as we default to normal)
-                    elif any(w in text_lower for w in ["normal", "safe", "stable", "low", "green", "decreasing"]):
+                    # NORMAL indicators (optional, just for logging)
+                    elif any(phrase in text_lower for phrase in [
+                        "normal level", "stable", "safe level", "decreasing", "below warning"
+                    ]):
                         river_data["status"] = "normal"
                     
                     results["rivers"].append(river_data)

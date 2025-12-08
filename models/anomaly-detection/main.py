@@ -4,16 +4,11 @@ Entry point for the anomaly detection training pipeline
 """
 import os
 import sys
-import logging
+import logging  # Import standard library BEFORE path manipulation
 from pathlib import Path
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-
-from src.pipeline import run_training_pipeline
-from src.entity import PipelineConfig
-
-# Configure logging
+# CRITICAL: Configure logging BEFORE adding src/ to path
+# (src/logging/ directory would otherwise shadow the standard module)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,8 +17,13 @@ logging.basicConfig(
         logging.FileHandler("training.log")
     ]
 )
-
 logger = logging.getLogger("main")
+
+# Add src to path - AFTER logging is configured
+sys.path.insert(0, str(Path(__file__).parent / "src"))
+
+from src.pipeline import run_training_pipeline
+from src.entity import PipelineConfig
 
 
 def main():

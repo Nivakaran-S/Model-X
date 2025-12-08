@@ -727,21 +727,57 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
         # Get recent feeds
         feeds = storage_manager.get_recent_feeds(limit=100)
         
-        if not _load_anomaly_components():
-            # Return high-severity events as proxy for anomalies
-            anomalies = [
-                {**f, "anomaly_score": 0.8, "is_anomaly": True}
-                for f in feeds
-                if f.get("severity") in ["critical", "high"]
-            ][:limit]
+        if not feeds:
+            # No feeds yet - return helpful message
             return {
-                "anomalies": anomalies,
-                "total": len(anomalies),
-                "model_status": "not_trained",
-                "fallback": "severity_based"
+                "anomalies": [],
+                "total": 0,
+                "model_status": "no_data",
+                "message": "No feed data available yet. Wait for graph execution to complete."
             }
         
-        # Score each feed
+        if not _load_anomaly_components():
+            # Use severity + keyword-based scoring as intelligent fallback
+            anomalies = []
+            anomaly_keywords = ["emergency", "crisis", "breaking", "urgent", "alert", 
+                               "warning", "critical", "disaster", "flood", "protest"]
+            
+            for f in feeds:
+                score = 0.0
+                summary = str(f.get("summary", "")).lower()
+                severity = f.get("severity", "low")
+                
+                # Severity-based scoring
+                if severity == "critical": score = 0.9
+                elif severity == "high": score = 0.75
+                elif severity == "medium": score = 0.5
+                else: score = 0.25
+                
+                # Keyword boosting
+                keyword_matches = sum(1 for kw in anomaly_keywords if kw in summary)
+                if keyword_matches > 0:
+                    score = min(1.0, score + (keyword_matches * 0.1))
+                
+                # Only include if above threshold
+                if score >= threshold:
+                    anomalies.append({
+                        **f,
+                        "anomaly_score": round(score, 3),
+                        "is_anomaly": score >= 0.7
+                    })
+            
+            # Sort by anomaly score
+            anomalies.sort(key=lambda x: x.get("anomaly_score", 0), reverse=True)
+            
+            return {
+                "anomalies": anomalies[:limit],
+                "total": len(anomalies),
+                "threshold": threshold,
+                "model_status": "fallback_scoring",
+                "message": "Using severity + keyword scoring. Train ML model for advanced detection."
+            }
+        
+        # ML Model is loaded - use it for scoring
         anomalies = []
         for feed in feeds:
             summary = feed.get("summary", "")
@@ -758,13 +794,13 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
                 else:
                     score = 1.0 if prediction == -1 else 0.0
                 
-                # Normalize score to 0-1 range (rough approximation)
+                # Normalize score to 0-1 range
                 normalized_score = max(0, min(1, (score + 0.5)))
                 
                 if prediction == -1 or normalized_score >= threshold:
                     anomalies.append({
                         **feed,
-                        "anomaly_score": float(normalized_score),
+                        "anomaly_score": float(round(normalized_score, 3)),
                         "is_anomaly": prediction == -1,
                         "language": lang
                     })
@@ -783,7 +819,7 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
             "anomalies": anomalies,
             "total": len(anomalies),
             "threshold": threshold,
-            "model_status": "loaded"
+            "model_status": "ml_active"
         }
         
     except Exception as e:
@@ -1117,42 +1153,57 @@ def remove_intel_target(target_type: str, value: str, platform: Optional[str] = 
 _weather_predictor = None
 
 def get_weather_predictor():
-    """Lazy-load the weather predictor."""
+    """Lazy-load the weather predictor using isolated import."""
     global _weather_predictor
-    if _weather_predictor is None:
-        try:
-            import sys
-            import importlib
-            from pathlib import Path
-            
-            weather_path = Path(__file__).parent / "models" / "weather-prediction" / "src"
-            weather_path_str = str(weather_path)
-            
-            # Ensure path is in sys.path
-            if weather_path_str not in sys.path:
-                sys.path.insert(0, weather_path_str)
-            
-            # CRITICAL FIX: Handle 'components' package name collision
-            # If 'components' is already loaded from another model (e.g. currency), unload it
-            if 'components' in sys.modules:
-                existing_path = getattr(sys.modules['components'], '__file__', '')
-                if existing_path and weather_path_str not in str(existing_path):
-                    logger.warning(f"[WeatherAPI] components collision detected. Unloading {existing_path}")
-                    # Unload generic modules to force reload from new path
-                    for mod in list(sys.modules.keys()):
-                        if mod.startswith('components') or mod.startswith('utils'):
-                            del sys.modules[mod]
-            
-            # Now import fresh
-            from components.predictor import WeatherPredictor
-            _weather_predictor = WeatherPredictor()
-            logger.info("[WeatherAPI] Weather predictor initialized")
-        except Exception as e:
-            logger.warning(f"[WeatherAPI] Failed to initialize predictor: {e}")
-            import traceback
-            logger.warning(traceback.format_exc())
-            _weather_predictor = None
-    return _weather_predictor
+    if _weather_predictor is not None:
+        return _weather_predictor
+    
+    try:
+        import importlib.util
+        from pathlib import Path
+        
+        # Use importlib.util for fully isolated import (avoids package collisions)
+        weather_src = Path(__file__).parent / "models" / "weather-prediction" / "src"
+        predictor_path = weather_src / "components" / "predictor.py"
+        
+        if not predictor_path.exists():
+            logger.error(f"[WeatherAPI] predictor.py not found at {predictor_path}")
+            return None
+        
+        # First, ensure entity module is loadable
+        entity_path = weather_src / "entity" / "config_entity.py"
+        if entity_path.exists():
+            entity_spec = importlib.util.spec_from_file_location(
+                "weather_config_entity",
+                str(entity_path)
+            )
+            entity_module = importlib.util.module_from_spec(entity_spec)
+            sys.modules["weather_config_entity"] = entity_module
+            entity_spec.loader.exec_module(entity_module)
+        
+        # Add weather src to path temporarily for relative imports
+        import sys
+        weather_src_str = str(weather_src)
+        if weather_src_str not in sys.path:
+            sys.path.insert(0, weather_src_str)
+        
+        # Now load predictor module
+        spec = importlib.util.spec_from_file_location(
+            "weather_predictor_module",
+            str(predictor_path)
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        _weather_predictor = module.WeatherPredictor()
+        logger.info("[WeatherAPI] ✓ Weather predictor initialized via isolated import")
+        return _weather_predictor
+        
+    except Exception as e:
+        logger.error(f"[WeatherAPI] Failed to initialize predictor: {e}")
+        import traceback
+        logger.debug(traceback.format_exc())
+        return None
 
 
 @app.get("/api/weather/predictions")
