@@ -39,19 +39,42 @@ jobs:
           python -c "
           from huggingface_hub import HfApi, login
           import os
+          import time
+          import httpx
           
           token = os.environ['HF_TOKEN']
           login(token=token)
           
+          # Configure longer timeout
+          os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '300'
+          
           api = HfApi()
-          api.upload_folder(
-              folder_path='.',
-              repo_id='nivakaran/modelx',
-              repo_type='space',
-              token=token,
-              ignore_patterns=['*.pyc', '__pycache__', '.git', 'node_modules', '*.log', '.env']
-          )
-          print('✅ Successfully pushed to Hugging Face Space!')
+          
+          # Retry logic with exponential backoff
+          max_retries = 3
+          for attempt in range(max_retries):
+              try:
+                  api.upload_folder(
+                      folder_path='.',
+                      repo_id='nivakaran/modelx',
+                      repo_type='space',
+                      token=token,
+                      ignore_patterns=[
+                          '*.pyc', '__pycache__', '.git', 'node_modules', '*.log', '.env',
+                          '*.parquet', '*.npy', 'artifacts/**', 'models/*/artifacts/**',
+                          '.github/**', 'frontend/node_modules/**', '*.tmp', '*.cache'
+                      ]
+                  )
+                  print('✅ Successfully pushed to Hugging Face Space!')
+                  break
+              except (httpx.ReadTimeout, httpx.ConnectTimeout, Exception) as e:
+                  if attempt < max_retries - 1:
+                      wait_time = (2 ** attempt) * 30  # 30s, 60s, 120s
+                      print(f'⚠️ Attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...')
+                      time.sleep(wait_time)
+                  else:
+                      print(f'❌ All {max_retries} attempts failed.')
+                      raise e
           "
 
       - name: Verify Sync
