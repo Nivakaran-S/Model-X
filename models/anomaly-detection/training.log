@@ -1,0 +1,112 @@
+2025-12-08 15:23:29,975 - main - INFO - ============================================================
+2025-12-08 15:23:29,975 - main - INFO - ANOMALY DETECTION PIPELINE
+2025-12-08 15:23:29,976 - main - INFO - ============================================================
+2025-12-08 15:23:29,999 - training_pipeline - INFO - [TrainingPipeline] Initialized (run_id: 20251208_152329)
+2025-12-08 15:23:29,999 - training_pipeline - INFO - ============================================================
+2025-12-08 15:23:30,000 - training_pipeline - INFO - [TrainingPipeline] STARTING TRAINING PIPELINE
+2025-12-08 15:23:30,000 - training_pipeline - INFO - ============================================================
+2025-12-08 15:23:30,000 - training_pipeline - INFO - ==================================================
+2025-12-08 15:23:30,001 - training_pipeline - INFO - [TrainingPipeline] STEP 1: Data Ingestion
+2025-12-08 15:23:30,002 - training_pipeline - INFO - ==================================================
+2025-12-08 15:23:30,004 - data_ingestion - INFO - [DataIngestion] Initialized
+2025-12-08 15:23:30,005 - data_ingestion - INFO -   SQLite: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+2025-12-08 15:23:30,005 - data_ingestion - INFO -   CSV Dir: C:\Users\LENOVO\Desktop\ModelX-Ultimate\datasets\political_feeds
+2025-12-08 15:23:30,006 - data_ingestion - INFO -   Output: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion
+2025-12-08 15:23:30,006 - data_ingestion - INFO - [DataIngestion] Starting data ingestion...
+2025-12-08 15:23:30,007 - data_ingestion - WARNING - [DataIngestion] SQLite DB not found: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+2025-12-08 15:23:30,091 - data_ingestion - INFO - [DataIngestion] Loaded 358 records from economic_feeds_202512.csv
+2025-12-08 15:23:30,138 - data_ingestion - INFO - [DataIngestion] Loaded 304 records from intelligence_feeds_202512.csv
+2025-12-08 15:23:30,197 - data_ingestion - INFO - [DataIngestion] Loaded 967 records from political_feeds_202512.csv
+2025-12-08 15:23:30,300 - data_ingestion - INFO - [DataIngestion] Loaded 483 records from social_feeds_202512.csv
+2025-12-08 15:23:30,382 - data_ingestion - INFO - [DataIngestion] Loaded 578 records from weather_feeds_202512.csv
+2025-12-08 15:23:30,414 - data_ingestion - INFO - [DataIngestion] Total 2690 records from 5 CSV files
+2025-12-08 15:23:30,423 - data_ingestion - INFO - [DataIngestion] Deduplicated: removed 2497 duplicates
+2025-12-08 15:23:30,429 - data_ingestion - INFO - [DataIngestion] Filtered: removed 2 short texts
+2025-12-08 15:23:30,792 - data_ingestion - INFO - [DataIngestion] Saved 191 records to C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251208_152330.parquet
+2025-12-08 15:23:30,911 - training_pipeline - INFO - ==================================================
+2025-12-08 15:23:30,911 - training_pipeline - INFO - [TrainingPipeline] STEP 2: Data Validation
+2025-12-08 15:23:30,911 - training_pipeline - INFO - ==================================================
+2025-12-08 15:23:30,954 - data_validation - INFO - [DataValidation] Initialized with schema: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\data_schema\schema.yaml
+2025-12-08 15:23:30,954 - data_validation - INFO - [DataValidation] Validating: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251208_152330.parquet
+2025-12-08 15:23:32,150 - data_validation - INFO - [DataValidation] Loaded 191 records
+2025-12-08 15:23:32,193 - training_pipeline - INFO - ==================================================
+2025-12-08 15:23:32,193 - training_pipeline - INFO - [TrainingPipeline] STEP 3: Data Transformation
+2025-12-08 15:23:32,193 - training_pipeline - INFO - ==================================================
+2025-12-08 15:23:32,195 - vectorizer - INFO - [Vectorizer] Using device: cpu
+2025-12-08 15:23:36,252 - data_transformation - WARNING - [DataTransformation] Vectorization API not available: HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /health (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001886AD25400>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+2025-12-08 15:23:36,253 - data_transformation - INFO - [DataTransformation] Using local vectorization (no LLM insights)
+2025-12-08 15:23:36,253 - data_transformation - INFO - [DataTransformation] Initialized
+2025-12-08 15:23:36,253 - data_transformation - INFO -   Models cache: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\models_cache
+2025-12-08 15:23:36,253 - data_transformation - INFO -   Vectorization API: disabled (using local)
+2025-12-08 15:23:36,253 - data_transformation - INFO - [DataTransformation] Starting transformation: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_validation\validated_data_20251208_152332.parquet
+2025-12-08 15:23:36,260 - data_transformation - INFO - [DataTransformation] Loaded 191 records
+2025-12-08 15:23:36,260 - data_transformation - INFO - [DataTransformation] Detecting languages...
+2025-12-08 15:23:36,285 - data_transformation - INFO - [DataTransformation] Language distribution:
+2025-12-08 15:23:36,285 - data_transformation - INFO -   english: 182 (95.3%)
+2025-12-08 15:23:36,286 - data_transformation - INFO -   sinhala: 4 (2.1%)
+2025-12-08 15:23:36,286 - data_transformation - INFO -   tamil: 3 (1.6%)
+2025-12-08 15:23:36,286 - data_transformation - INFO -   unknown: 2 (1.0%)
+2025-12-08 15:23:36,286 - data_transformation - INFO - [DataTransformation] Extracting temporal features...
+2025-12-08 15:23:36,311 - data_transformation - INFO - [DataTransformation] Extracting engagement features...
+2025-12-08 15:23:36,319 - data_transformation - INFO - [DataTransformation] Extracting text features...
+2025-12-08 15:23:36,325 - data_transformation - INFO - [DataTransformation] Vectorizing texts with BERT models...
+2025-12-08 15:23:36,328 - vectorizer - INFO - [Vectorizer] Loading model: distilbert-base-uncased
+2025-12-08 15:23:55,759 - vectorizer - INFO - [Vectorizer] Loading model: keshan/SinhalaBERTo
+2025-12-08 15:24:22,860 - vectorizer - INFO - [Vectorizer] Loading model: l3cube-pune/tamil-bert
+2025-12-08 15:24:44,225 - data_transformation - INFO - [DataTransformation] Building feature matrix...
+2025-12-08 15:24:44,232 - data_transformation - INFO - [DataTransformation] Feature matrix shape: (191, 776)
+2025-12-08 15:24:44,267 - training_pipeline - INFO - ==================================================
+2025-12-08 15:24:44,268 - training_pipeline - INFO - [TrainingPipeline] STEP 4: Model Training
+2025-12-08 15:24:44,268 - training_pipeline - INFO - ==================================================
+2025-12-08 15:24:46,479 - model_trainer - WARNING - [ModelTrainer] MLflow setup error: API request to endpoint /api/2.0/mlflow/experiments/create failed with error code 403 != 200. Response body: ''
+2025-12-08 15:24:46,479 - model_trainer - INFO - [ModelTrainer] Initialized
+2025-12-08 15:24:46,479 - model_trainer - INFO -   Models to train: ['dbscan', 'kmeans', 'hdbscan', 'isolation_forest', 'lof']
+2025-12-08 15:24:46,479 - model_trainer - INFO -   Optuna trials: 50
+2025-12-08 15:24:46,480 - model_trainer - INFO - [ModelTrainer] Starting training: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_transformation\features_20251208_152444.npy
+2025-12-08 15:24:46,481 - model_trainer - INFO - [ModelTrainer] Loaded features: (191, 776)
+2025-12-08 15:24:47,947 - model_trainer - WARNING - [ModelTrainer] MLflow run start error: API request to endpoint /api/2.0/mlflow/runs/create failed with error code 403 != 200. Response body: ''
+2025-12-08 15:24:47,948 - model_trainer - INFO - [ModelTrainer] Training dbscan...
+2025-12-08 15:24:47,948 - model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+2025-12-08 15:24:54,746 - model_trainer - INFO - [ModelTrainer] Training kmeans...
+2025-12-08 15:24:54,746 - model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+2025-12-08 15:24:55,252 - model_trainer - INFO - [ModelTrainer] Training hdbscan...
+2025-12-08 15:24:55,252 - model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+2025-12-08 15:24:55,252 - model_trainer - WARNING - [ModelTrainer] hdbscan error: hdbscan not available
+2025-12-08 15:24:55,253 - model_trainer - INFO - [ModelTrainer] Training isolation_forest...
+2025-12-08 15:24:55,253 - model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+2025-12-08 15:24:56,108 - model_trainer - INFO - [ModelTrainer] Training lof...
+2025-12-08 15:24:56,109 - model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+2025-12-08 15:24:56,520 - model_trainer - INFO - [ModelTrainer] Best model: kmeans
+2025-12-08 15:24:56,521 - training_pipeline - INFO - ============================================================
+2025-12-08 15:24:56,521 - training_pipeline - INFO - [TrainingPipeline] PIPELINE SUCCESS
+2025-12-08 15:24:56,521 - training_pipeline - INFO - [TrainingPipeline] Duration: 86.5s
+2025-12-08 15:24:56,521 - training_pipeline - INFO - ============================================================
+2025-12-08 15:24:56,521 - main - INFO - 
+============================================================
+2025-12-08 15:24:56,521 - main - INFO - PIPELINE RESULTS
+2025-12-08 15:24:56,521 - main - INFO - ============================================================
+2025-12-08 15:24:56,521 - main - INFO - Status: SUCCESS
+2025-12-08 15:24:56,521 - main - INFO - Run ID: 20251208_152329
+2025-12-08 15:24:56,521 - main - INFO - Duration: 2025-12-08T15:23:29.999822 to 2025-12-08T15:24:56.521223
+2025-12-08 15:24:56,522 - main - INFO - 
+--- Data Ingestion ---
+2025-12-08 15:24:56,522 - main - INFO - Total records: 191
+2025-12-08 15:24:56,522 - main - INFO - From SQLite: 0
+2025-12-08 15:24:56,522 - main - INFO - From CSV: 2690
+2025-12-08 15:24:56,522 - main - INFO - 
+--- Data Validation ---
+2025-12-08 15:24:56,522 - main - INFO - Valid records: 191
+2025-12-08 15:24:56,522 - main - INFO - Validation status: True
+2025-12-08 15:24:56,522 - main - INFO - 
+--- Data Transformation ---
+2025-12-08 15:24:56,522 - main - INFO - Language distribution: {'english': 182, 'sinhala': 4, 'tamil': 3, 'unknown': 2}
+2025-12-08 15:24:56,522 - main - INFO - 
+--- Model Training ---
+2025-12-08 15:24:56,522 - main - INFO - Best model: kmeans
+2025-12-08 15:24:56,522 - main - INFO - Best metrics: {'silhouette_score': 0.12148737632185207, 'calinski_harabasz_score': 31.16739270721942, 'davies_bouldin_score': 1.9246440952712944, 'n_clusters': 5, 'n_samples': 191, 'n_noise_points': 0, 'noise_ratio': 0.0, 'min_cluster_size': 4, 'max_cluster_size': 66, 'mean_cluster_size': 38.2}
+2025-12-08 15:24:56,522 - main - INFO - MLflow run: 
+2025-12-08 15:24:56,522 - main - INFO - Anomalies detected: 19
+2025-12-08 15:24:56,522 - main - INFO - 
+============================================================
+2025-12-08 15:24:56,522 - main - INFO - PIPELINE COMPLETE
+2025-12-08 15:24:56,523 - main - INFO - ============================================================

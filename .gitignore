@@ -1,0 +1,67 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Environment files
+.env
+
+# LangGraph
+.langgraph_api
+
+# =============================================================================
+# ML MODEL ARTIFACTS (Large files - don't push to Git)
+# =============================================================================
+
+# Trained model weights (large binary files)
+*.h5
+*.hdf5
+*.joblib
+*.pkl
+*.pickle
+*.pt
+*.pth
+*.onnx
+*.pb
+
+# Model output directories
+models/*/artifacts/models/
+models/*/output/
+models/*/models_cache/
+models/*/checkpoints/
+
+# Airflow local state
+models/*/.astro/
+
+# MLflow artifacts (tracked separately)
+mlruns/
+mlartifacts/
+
+# =============================================================================
+# DATA FILES (Can be large)
+# =============================================================================
+data/
+datasets/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# ChromaDB persistence (can be large)
+chroma_db/
+
+# =============================================================================
+# KEEP THESE (source code, configs)
+# =============================================================================
+# The models/ folders themselves ARE tracked for:
+# - main.py, src/, dags/ (pipeline code)
+# - requirements.txt, setup.py (dependencies)
+# - data_schema/ (validation configs)
+# - README.md (documentation)

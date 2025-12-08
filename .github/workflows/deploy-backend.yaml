@@ -1,0 +1,63 @@
+name: Deploy Backend to Hugging Face Space
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Setup Git LFS
+        run: |
+          git lfs install
+          git lfs pull
+          git lfs checkout
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install huggingface_hub
+        run: pip install huggingface_hub
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python -c "
+          from huggingface_hub import HfApi, login
+          import os
+          
+          token = os.environ['HF_TOKEN']
+          login(token=token)
+          
+          api = HfApi()
+          api.upload_folder(
+              folder_path='.',
+              repo_id='nivakaran/modelx',
+              repo_type='space',
+              token=token,
+              ignore_patterns=['*.pyc', '__pycache__', '.git', 'node_modules', '*.log', '.env']
+          )
+          print('✅ Successfully pushed to Hugging Face Space!')
+          "
+
+      - name: Verify Sync
+        if: success()
+        run: echo "✅ Successfully synced to Hugging Face Space!"
+
+      - name: Sync Failed  
+        if: failure()
+        run: echo "❌ Failed to sync. Check if the Space exists at https://huggingface.co/spaces/nivakaran/modelx"
