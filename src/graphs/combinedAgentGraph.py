@@ -3,6 +3,7 @@ combinedAgentGraph.py
 Main entry point for the Combined Agent System.
 FIXED: Removed sub-graph wrappers that were causing CancelledError
 """
+
 from __future__ import annotations
 from typing import Dict, Any
 import logging
@@ -19,6 +20,7 @@ from src.nodes.combinedAgentNode import CombinedAgentNode
 # LangSmith Tracing (auto-configures if LANGSMITH_API_KEY is set)
 try:
     from src.config.langsmith_config import LangSmithConfig
+
     _langsmith = LangSmithConfig()
     _langsmith.configure()
 except ImportError:
@@ -57,45 +59,55 @@ class CombinedAgentGraphBuilder:
         # This solves the state type mismatch issue - sub-agents return their own state types
         # but we need to update CombinedAgentState. Wrappers extract domain_insights and
         # return update dicts that get merged via the reduce_insights reducer.
-        
+
         def run_social_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke SocialAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking SocialAgent...")
             result = social_graph.invoke({})
             insights = result.get("domain_insights", [])
-            logger.info(f"[CombinedGraph] SocialAgent returned {len(insights)} insights")
+            logger.info(
+                f"[CombinedGraph] SocialAgent returned {len(insights)} insights"
+            )
             return {"domain_insights": insights}
-        
+
         def run_intelligence_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke IntelligenceAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking IntelligenceAgent...")
             result = intelligence_graph.invoke({})
             insights = result.get("domain_insights", [])
-            logger.info(f"[CombinedGraph] IntelligenceAgent returned {len(insights)} insights")
+            logger.info(
+                f"[CombinedGraph] IntelligenceAgent returned {len(insights)} insights"
+            )
             return {"domain_insights": insights}
-        
+
         def run_economical_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke EconomicalAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking EconomicalAgent...")
             result = economical_graph.invoke({})
             insights = result.get("domain_insights", [])
-            logger.info(f"[CombinedGraph] EconomicalAgent returned {len(insights)} insights")
+            logger.info(
+                f"[CombinedGraph] EconomicalAgent returned {len(insights)} insights"
+            )
             return {"domain_insights": insights}
-        
+
         def run_political_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke PoliticalAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking PoliticalAgent...")
             result = political_graph.invoke({})
             insights = result.get("domain_insights", [])
-            logger.info(f"[CombinedGraph] PoliticalAgent returned {len(insights)} insights")
+            logger.info(
+                f"[CombinedGraph] PoliticalAgent returned {len(insights)} insights"
+            )
             return {"domain_insights": insights}
-        
+
         def run_meteorological_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke MeteorologicalAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking MeteorologicalAgent...")
             result = meteorological_graph.invoke({})
             insights = result.get("domain_insights", [])
-            logger.info(f"[CombinedGraph] MeteorologicalAgent returned {len(insights)} insights")
+            logger.info(
+                f"[CombinedGraph] MeteorologicalAgent returned {len(insights)} insights"
+            )
             return {"domain_insights": insights}
 
         # 3. Initialize Main Orchestrator Node
@@ -105,7 +117,7 @@ class CombinedAgentGraphBuilder:
         workflow = StateGraph(CombinedAgentState)
 
         # 5. Add Sub-Agent Wrapper Nodes
-        # These wrappers extract domain_insights from sub-agent results and 
+        # These wrappers extract domain_insights from sub-agent results and
         # return updates for CombinedAgentState (via the reduce_insights reducer)
         workflow.add_node("SocialAgent", run_social_agent)
         workflow.add_node("IntelligenceAgent", run_intelligence_agent)
@@ -125,8 +137,11 @@ class CombinedAgentGraphBuilder:
 
         # Initiator -> All Sub-Agents (Parallel)
         sub_agents = [
-            "SocialAgent", "IntelligenceAgent", "EconomicalAgent",
-            "PoliticalAgent", "MeteorologicalAgent"
+            "SocialAgent",
+            "IntelligenceAgent",
+            "EconomicalAgent",
+            "PoliticalAgent",
+            "MeteorologicalAgent",
         ]
         for agent in sub_agents:
             workflow.add_edge("GraphInitiator", agent)
@@ -140,13 +155,11 @@ class CombinedAgentGraphBuilder:
         workflow.add_conditional_edges(
             "DataRefreshRouter",
             lambda x: x.route if x.route else "END",
-            {
-                "GraphInitiator": "GraphInitiator",
-                "END": END
-            }
+            {"GraphInitiator": "GraphInitiator", "END": END},
         )
 
         return workflow.compile()
+
 
 # --- GLOBAL EXPORT FOR LANGGRAPH DEV ---
 # This code runs when the file is imported.

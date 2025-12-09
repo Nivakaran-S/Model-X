@@ -3,6 +3,7 @@ src/api/vectorization_api.py
 FastAPI endpoint for the Vectorization Agent
 Production-grade API for text-to-vector conversion
 """
+
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -21,7 +22,7 @@ app = FastAPI(
     description="API for converting multilingual text to vectors using language-specific BERT models",
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # CORS middleware
@@ -38,8 +39,10 @@ app.add_middleware(
 # REQUEST/RESPONSE MODELS
 # ============================================================================
 
+
 class TextInput(BaseModel):
     """Single text input for vectorization"""
+
     text: str = Field(..., description="Text content to vectorize")
     post_id: Optional[str] = Field(None, description="Unique identifier for the text")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
@@ -47,14 +50,18 @@ class TextInput(BaseModel):
 
 class VectorizationRequest(BaseModel):
     """Request for batch text vectorization"""
+
     texts: List[TextInput] = Field(..., description="List of texts to vectorize")
     batch_id: Optional[str] = Field(None, description="Batch identifier")
     include_vectors: bool = Field(True, description="Include full vectors in response")
-    include_expert_summary: bool = Field(True, description="Generate LLM expert summary")
+    include_expert_summary: bool = Field(
+        True, description="Generate LLM expert summary"
+    )
 
 
 class VectorizationResponse(BaseModel):
     """Response from vectorization"""
+
     batch_id: str
     status: str
     total_processed: int
@@ -69,6 +76,7 @@ class VectorizationResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Health check response"""
+
     status: str
     timestamp: str
     vectorizer_available: bool
@@ -79,29 +87,31 @@ class HealthResponse(BaseModel):
 # ENDPOINTS
 # ============================================================================
 
+
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
     from src.llms.groqllm import GroqLLM
-    
+
     try:
         llm = GroqLLM().get_llm()
         llm_available = True
     except Exception:
         llm_available = False
-    
+
     try:
         from models.anomaly_detection.src.utils import get_vectorizer
+
         vectorizer = get_vectorizer()
         vectorizer_available = True
     except Exception:
         vectorizer_available = False
-    
+
     return HealthResponse(
         status="healthy",
         timestamp=datetime.utcnow().isoformat(),
         vectorizer_available=vectorizer_available,
-        llm_available=llm_available
+        llm_available=llm_available,
     )
 
 
@@ -109,7 +119,7 @@ async def health_check():
 async def vectorize_texts(request: VectorizationRequest):
     """
     Vectorize a batch of texts using language-specific BERT models.
-    
+
     Steps:
     1. Language Detection (FastText/lingua-py)
     2. Text Vectorization (SinhalaBERTo/Tamil-BERT/DistilBERT)
@@ -117,49 +127,52 @@ async def vectorize_texts(request: VectorizationRequest):
     4. Opportunity/Threat Analysis
     """
     start_time = datetime.utcnow()
-    
+
     try:
         # Prepare input
         input_texts = []
         for i, text_input in enumerate(request.texts):
-            input_texts.append({
-                "text": text_input.text,
-                "post_id": text_input.post_id or f"text_{i}",
-                "metadata": text_input.metadata or {}
-            })
-        
+            input_texts.append(
+                {
+                    "text": text_input.text,
+                    "post_id": text_input.post_id or f"text_{i}",
+                    "metadata": text_input.metadata or {},
+                }
+            )
+
         batch_id = request.batch_id or datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         # Run vectorization graph
-        initial_state = {
-            "input_texts": input_texts,
-            "batch_id": batch_id
-        }
-        
+        initial_state = {"input_texts": input_texts, "batch_id": batch_id}
+
         result = vectorization_graph.invoke(initial_state)
-        
+
         # Calculate processing time
         processing_time = (datetime.utcnow() - start_time).total_seconds()
-        
+
         # Build response
         final_output = result.get("final_output", {})
         processing_stats = result.get("processing_stats", {})
-        
+
         response = VectorizationResponse(
             batch_id=batch_id,
             status="SUCCESS",
             total_processed=final_output.get("total_texts", len(input_texts)),
             language_distribution=processing_stats.get("language_distribution", {}),
-            expert_summary=result.get("expert_summary") if request.include_expert_summary else None,
+            expert_summary=(
+                result.get("expert_summary") if request.include_expert_summary else None
+            ),
             opportunities_count=final_output.get("opportunities_count", 0),
             threats_count=final_output.get("threats_count", 0),
             domain_insights=result.get("domain_insights", []),
             processing_time_seconds=processing_time,
-            vectors=result.get("vector_embeddings") if request.include_vectors else None
+            vectors=(
+                result.get("vector_embeddings") if request.include_vectors else None
+            ),
         )
-        
+
         return response
-        
+
     except Exception as e:
         logger.error(f"Vectorization error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -173,18 +186,16 @@ async def detect_language(texts: List[str]):
     """
     try:
         from models.anomaly_detection.src.utils import detect_language as detect_lang
-        
+
         results = []
         for text in texts:
             lang, conf = detect_lang(text)
-            results.append({
-                "text_preview": text[:100],
-                "language": lang,
-                "confidence": conf
-            })
-        
+            results.append(
+                {"text_preview": text[:100], "language": lang, "confidence": conf}
+            )
+
         return {"results": results}
-        
+
     except Exception as e:
         logger.error(f"Language detection error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -198,30 +209,31 @@ async def list_models():
             "english": {
                 "name": "DistilBERT",
                 "hf_name": "distilbert-base-uncased",
-                "description": "Fast and accurate English understanding"
+                "description": "Fast and accurate English understanding",
             },
             "sinhala": {
                 "name": "SinhalaBERTo",
                 "hf_name": "keshan/SinhalaBERTo",
-                "description": "Specialized Sinhala context and sentiment"
+                "description": "Specialized Sinhala context and sentiment",
             },
             "tamil": {
                 "name": "Tamil-BERT",
                 "hf_name": "l3cube-pune/tamil-bert",
-                "description": "Specialized Tamil understanding"
-            }
+                "description": "Specialized Tamil understanding",
+            },
         },
         "language_detection": {
             "primary": "FastText (lid.176.bin)",
-            "fallback": "lingua-py + Unicode script detection"
+            "fallback": "lingua-py + Unicode script detection",
         },
-        "vector_dimension": 768
+        "vector_dimension": 768,
     }
 
 
 # ============================================================================
 # RUN SERVER
 # ============================================================================
+
 
 def start_vectorization_server(host: str = "0.0.0.0", port: int = 8001):
     """Start the FastAPI server"""

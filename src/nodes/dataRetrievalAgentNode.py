@@ -6,16 +6,17 @@ Handles orchestrator-worker pattern for scraping tasks
 Updated: Uses Tool Factory pattern for parallel execution safety.
 Each agent instance gets its own private set of tools.
 """
+
 import json
 import uuid
 from typing import List
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END
 from src.states.dataRetrievalAgentState import (
-    DataRetrievalAgentState, 
-    ScrapingTask, 
-    RawScrapedData, 
-    ClassifiedEvent
+    DataRetrievalAgentState,
+    ScrapingTask,
+    RawScrapedData,
+    ClassifiedEvent,
 )
 from src.utils.tool_factory import create_tool_set
 from src.utils.utils import TOOL_MAPPING  # Keep for backward compatibility
@@ -28,12 +29,12 @@ class DataRetrievalAgentNode:
     2. Worker Agent - Executes individual tasks
     3. Tool Node - Runs the actual tools
     4. Classifier Agent - Categorizes results for domain agents
-    
+
     Thread Safety:
         Each DataRetrievalAgentNode instance creates its own private ToolSet,
         enabling safe parallel execution with other agents.
     """
-    
+
     def __init__(self, llm):
         """Initialize with LLM and private tool set"""
         # Create PRIVATE tool instances for this agent
@@ -43,22 +44,22 @@ class DataRetrievalAgentNode:
     # =========================================================================
     # 1. MASTER AGENT (TASK DELEGATOR)
     # =========================================================================
-    
+
     def master_agent_node(self, state: DataRetrievalAgentState):
         """
         TASK DELEGATOR MASTER AGENT
-        
+
         Decides which scraping tools to run based on:
         - Previously completed tasks (avoid redundancy)
         - Current monitoring needs
         - Keywords of interest
-        
+
         Returns: List[ScrapingTask]
         """
         print("=== [MASTER AGENT] Planning Scraping Tasks ===")
-        
+
         completed_tools = [r.source_tool for r in state.worker_results]
-        
+
         system_prompt = f"""
 You are the Master Data Retrieval Agent for Roger - Sri Lanka's situational awareness platform.
 
@@ -90,21 +91,25 @@ Respond with valid JSON array:
 
 If no tasks needed, return []
 """
-        
+
         parsed_tasks: List[ScrapingTask] = []
-        
+
         try:
-            response = self.llm.invoke([
-                SystemMessage(content=system_prompt),
-                HumanMessage(content="Plan the next scraping wave for Sri Lankan situational awareness.")
-            ])
-            
+            response = self.llm.invoke(
+                [
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(
+                        content="Plan the next scraping wave for Sri Lankan situational awareness."
+                    ),
+                ]
+            )
+
             raw = response.content
             suggested = json.loads(raw)
-            
+
             if isinstance(suggested, dict):
                 suggested = [suggested]
-            
+
             for item in suggested:
                 try:
                     task = ScrapingTask(**item)
@@ -112,76 +117,73 @@ If no tasks needed, return []
                 except Exception as e:
                     print(f"[MASTER] Failed to parse task: {e}")
                     continue
-                    
+
         except Exception as e:
             print(f"[MASTER] LLM planning failed: {e}, using fallback plan")
-        
+
         # Fallback plan if LLM fails
         if not parsed_tasks and not state.previous_tasks:
             parsed_tasks = [
                 ScrapingTask(
                     tool_name="scrape_local_news",
                     parameters={"keywords": ["Sri Lanka", "economy", "politics"]},
-                    priority="high"
+                    priority="high",
                 ),
                 ScrapingTask(
                     tool_name="scrape_cse_stock_data",
                     parameters={"symbol": "ASPI"},
-                    priority="high"
+                    priority="high",
                 ),
                 ScrapingTask(
                     tool_name="scrape_government_gazette",
                     parameters={"keywords": ["tax", "import", "regulation"]},
-                    priority="normal"
+                    priority="normal",
                 ),
                 ScrapingTask(
                     tool_name="scrape_reddit",
                     parameters={"keywords": ["Sri Lanka"], "limit": 20},
-                    priority="normal"
+                    priority="normal",
                 ),
             ]
-        
+
         print(f"[MASTER] Planned {len(parsed_tasks)} tasks")
-        
+
         return {
             "generated_tasks": parsed_tasks,
-            "previous_tasks": [t.tool_name for t in parsed_tasks]
+            "previous_tasks": [t.tool_name for t in parsed_tasks],
         }
 
     # =========================================================================
     # 2. WORKER AGENT
     # =========================================================================
-    
+
     def worker_agent_node(self, state: DataRetrievalAgentState):
         """
         DATA RETRIEVAL WORKER AGENT
-        
+
         Pops next task from queue and prepares it for ToolNode execution.
         This runs in parallel via map() in the graph.
         """
         if not state.generated_tasks:
             print("[WORKER] No tasks in queue")
             return {}
-        
+
         # Pop first task (FIFO)
         current_task = state.generated_tasks[0]
         remaining = state.generated_tasks[1:]
-        
+
         print(f"[WORKER] Dispatching -> {current_task.tool_name}")
-        
-        return {
-            "generated_tasks": remaining,
-            "current_task": current_task
-        }
+
+        return {"generated_tasks": remaining, "current_task": current_task}
 
     # =========================================================================
     # 3. TOOL NODE
     # =========================================================================
-    
+
     def tool_node(self, state: DataRetrievalAgentState):
         """
         TOOL NODE
-        
+
         Executes the actual scraping tool specified by current_task.
         Handles errors gracefully and records results.
         """
@@ -189,11 +191,11 @@ If no tasks needed, return []
         if current_task is None:
             print("[TOOL NODE] No active task")
             return {}
-        
+
         print(f"[TOOL NODE] Executing -> {current_task.tool_name}")
-        
+
         tool_func = self.tools.get(current_task.tool_name)
-        
+
         if tool_func is None:
             output = f"Tool '{current_task.tool_name}' not found in registry"
             status = "failed"
@@ -207,40 +209,39 @@ If no tasks needed, return []
                 output = f"Error: {str(e)}"
                 status = "failed"
                 print(f"[TOOL NODE] ✗ Failed: {e}")
-        
+
         result = RawScrapedData(
-            source_tool=current_task.tool_name,
-            raw_content=str(output),
-            status=status
+            source_tool=current_task.tool_name, raw_content=str(output), status=status
         )
-        
-        return {
-            "current_task": None,
-            "worker_results": [result]
-        }
+
+        return {"current_task": None, "worker_results": [result]}
 
     # =========================================================================
     # 4. CLASSIFIER AGENT
     # =========================================================================
-    
+
     def classifier_agent_node(self, state: DataRetrievalAgentState):
         """
         DATA CLASSIFIER AGENT
-        
+
         Analyzes scraped data and routes it to appropriate domain agents.
         Creates ClassifiedEvent objects with summaries and target agents.
         """
         if not state.latest_worker_results:
             print("[CLASSIFIER] No new results to process")
             return {}
-        
+
         print(f"[CLASSIFIER] Processing {len(state.latest_worker_results)} results")
-        
+
         agent_categories = [
-            "social", "economical", "political", 
-            "mobility", "weather", "intelligence"
+            "social",
+            "economical",
+            "political",
+            "mobility",
+            "weather",
+            "intelligence",
         ]
-        
+
         system_prompt = f"""
 You are a data classification expert for Roger.
 
@@ -262,26 +263,30 @@ Respond with JSON:
   "target_agent": "<agent_name>"
 }}
 """
-        
+
         all_classified: List[ClassifiedEvent] = []
-        
+
         for result in state.latest_worker_results:
             try:
-                response = self.llm.invoke([
-                    SystemMessage(content=system_prompt),
-                    HumanMessage(content=f"Source: {result.source_tool}\n\nData:\n{result.raw_content[:2000]}")
-                ])
-                
+                response = self.llm.invoke(
+                    [
+                        SystemMessage(content=system_prompt),
+                        HumanMessage(
+                            content=f"Source: {result.source_tool}\n\nData:\n{result.raw_content[:2000]}"
+                        ),
+                    ]
+                )
+
                 result_json = json.loads(response.content)
                 summary = result_json.get("summary", "No summary")
                 target = result_json.get("target_agent", "social")
-                
+
                 if target not in agent_categories:
                     target = "social"
-                    
+
             except Exception as e:
                 print(f"[CLASSIFIER] LLM failed: {e}, using rule-based classification")
-                
+
                 # Fallback rule-based classification
                 source = result.source_tool.lower()
                 if "stock" in source or "cse" in source:
@@ -294,20 +299,19 @@ Respond with JSON:
                     target = "social"
                 else:
                     target = "social"
-                
-                summary = f"Data from {result.source_tool}: {result.raw_content[:150]}..."
-            
+
+                summary = (
+                    f"Data from {result.source_tool}: {result.raw_content[:150]}..."
+                )
+
             classified = ClassifiedEvent(
                 event_id=str(uuid.uuid4()),
                 content_summary=summary,
                 target_agent=target,
-                confidence_score=0.85
+                confidence_score=0.85,
             )
             all_classified.append(classified)
-        
+
         print(f"[CLASSIFIER] Classified {len(all_classified)} events")
-        
-        return {
-            "classified_buffer": all_classified,
-            "latest_worker_results": []
-        }
+
+        return {"classified_buffer": all_classified, "latest_worker_results": []}

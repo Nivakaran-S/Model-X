@@ -9,6 +9,7 @@ Tracks topic mention frequency over time to detect:
 
 Uses SQLite for persistence.
 """
+
 import os
 import json
 import sqlite3
@@ -29,18 +30,23 @@ DEFAULT_DB_PATH = os.path.join(
 class TrendingDetector:
     """
     Detects trending topics and velocity spikes.
-    
+
     Features:
     - Records topic mentions with timestamps
     - Calculates momentum (current_hour / avg_last_6_hours)
     - Detects spikes (>3x normal volume in 1 hour)
     - Returns trending topics for dashboard display
     """
-    
-    def __init__(self, db_path: str = None, spike_threshold: float = 3.0, momentum_threshold: float = 2.0):
+
+    def __init__(
+        self,
+        db_path: str = None,
+        spike_threshold: float = 3.0,
+        momentum_threshold: float = 2.0,
+    ):
         """
         Initialize the TrendingDetector.
-        
+
         Args:
             db_path: Path to SQLite database (default: data/trending.db)
             spike_threshold: Multiplier for spike detection (default: 3x)
@@ -49,18 +55,19 @@ class TrendingDetector:
         self.db_path = db_path or DEFAULT_DB_PATH
         self.spike_threshold = spike_threshold
         self.momentum_threshold = momentum_threshold
-        
+
         # Ensure directory exists
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        
+
         # Initialize database
         self._init_db()
         logger.info(f"[TrendingDetector] Initialized with db: {self.db_path}")
-    
+
     def _init_db(self):
         """Create tables if they don't exist"""
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS topic_mentions (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     topic TEXT NOT NULL,
@@ -69,16 +76,22 @@ class TrendingDetector:
                     source TEXT,
                     domain TEXT
                 )
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_topic_hash ON topic_mentions(topic_hash)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_timestamp ON topic_mentions(timestamp)
-            """)
-            
+            """
+            )
+
             # Hourly aggregates for faster queries
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS hourly_counts (
                     topic_hash TEXT NOT NULL,
                     hour_bucket TEXT NOT NULL,
@@ -86,29 +99,30 @@ class TrendingDetector:
                     topic TEXT,
                     PRIMARY KEY (topic_hash, hour_bucket)
                 )
-            """)
+            """
+            )
             conn.commit()
-    
+
     def _topic_hash(self, topic: str) -> str:
         """Generate a hash for a topic (normalized lowercase)"""
         normalized = topic.lower().strip()
         return hashlib.md5(normalized.encode()).hexdigest()[:12]
-    
+
     def _get_hour_bucket(self, dt: datetime = None) -> str:
         """Get the hour bucket string (YYYY-MM-DD-HH)"""
         dt = dt or datetime.utcnow()
         return dt.strftime("%Y-%m-%d-%H")
-    
+
     def record_mention(
-        self, 
-        topic: str, 
-        source: str = None, 
+        self,
+        topic: str,
+        source: str = None,
         domain: str = None,
-        timestamp: datetime = None
+        timestamp: datetime = None,
     ):
         """
         Record a topic mention.
-        
+
         Args:
             topic: The topic/keyword mentioned
             source: Source of the mention (e.g., 'twitter', 'news')
@@ -118,27 +132,33 @@ class TrendingDetector:
         topic_hash = self._topic_hash(topic)
         ts = timestamp or datetime.utcnow()
         hour_bucket = self._get_hour_bucket(ts)
-        
+
         with sqlite3.connect(self.db_path) as conn:
             # Insert mention
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO topic_mentions (topic, topic_hash, timestamp, source, domain)
                 VALUES (?, ?, ?, ?, ?)
-            """, (topic.lower().strip(), topic_hash, ts.isoformat(), source, domain))
-            
+            """,
+                (topic.lower().strip(), topic_hash, ts.isoformat(), source, domain),
+            )
+
             # Update hourly aggregate
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO hourly_counts (topic_hash, hour_bucket, count, topic)
                 VALUES (?, ?, 1, ?)
                 ON CONFLICT(topic_hash, hour_bucket) DO UPDATE SET count = count + 1
-            """, (topic_hash, hour_bucket, topic.lower().strip()))
-            
+            """,
+                (topic_hash, hour_bucket, topic.lower().strip()),
+            )
+
             conn.commit()
-    
+
     def record_mentions_batch(self, mentions: List[Dict[str, Any]]):
         """
         Record multiple mentions at once.
-        
+
         Args:
             mentions: List of dicts with keys: topic, source, domain, timestamp
         """
@@ -147,153 +167,178 @@ class TrendingDetector:
                 topic=mention.get("topic", ""),
                 source=mention.get("source"),
                 domain=mention.get("domain"),
-                timestamp=mention.get("timestamp")
+                timestamp=mention.get("timestamp"),
             )
-    
+
     def get_momentum(self, topic: str) -> float:
         """
         Calculate momentum for a topic.
-        
+
         Momentum = mentions_in_current_hour / avg_mentions_in_last_6_hours
-        
+
         Returns:
             Momentum value (1.0 = normal, >2.0 = trending, >3.0 = spike)
         """
         topic_hash = self._topic_hash(topic)
         now = datetime.utcnow()
         current_hour = self._get_hour_bucket(now)
-        
+
         with sqlite3.connect(self.db_path) as conn:
             # Get current hour count
-            result = conn.execute("""
+            result = conn.execute(
+                """
                 SELECT count FROM hourly_counts 
                 WHERE topic_hash = ? AND hour_bucket = ?
-            """, (topic_hash, current_hour)).fetchone()
+            """,
+                (topic_hash, current_hour),
+            ).fetchone()
             current_count = result[0] if result else 0
-            
+
             # Get average of last 6 hours
             past_hours = []
             for i in range(1, 7):
                 past_dt = now - timedelta(hours=i)
                 past_hours.append(self._get_hour_bucket(past_dt))
-            
+
             placeholders = ",".join(["?" for _ in past_hours])
-            result = conn.execute(f"""
+            result = conn.execute(
+                f"""
                 SELECT AVG(count) FROM hourly_counts 
                 WHERE topic_hash = ? AND hour_bucket IN ({placeholders})
-            """, [topic_hash] + past_hours).fetchone()
-            avg_count = result[0] if result and result[0] else 0.1  # Avoid division by zero
-            
+            """,
+                [topic_hash] + past_hours,
+            ).fetchone()
+            avg_count = (
+                result[0] if result and result[0] else 0.1
+            )  # Avoid division by zero
+
             return current_count / avg_count if avg_count > 0 else current_count
-    
+
     def is_spike(self, topic: str, window_hours: int = 1) -> bool:
         """
         Check if a topic is experiencing a spike.
-        
+
         A spike is when current volume > spike_threshold * normal volume.
         """
         momentum = self.get_momentum(topic)
         return momentum >= self.spike_threshold
-    
+
     def get_trending_topics(self, limit: int = 10) -> List[Dict[str, Any]]:
         """
         Get topics with momentum above threshold.
-        
+
         Returns:
             List of trending topics with their momentum values
         """
         now = datetime.utcnow()
         current_hour = self._get_hour_bucket(now)
-        
+
         trending = []
-        
+
         with sqlite3.connect(self.db_path) as conn:
             # Get all topics mentioned in current hour
-            results = conn.execute("""
+            results = conn.execute(
+                """
                 SELECT DISTINCT topic, topic_hash, count 
                 FROM hourly_counts 
                 WHERE hour_bucket = ?
                 ORDER BY count DESC
                 LIMIT 50
-            """, (current_hour,)).fetchall()
-            
+            """,
+                (current_hour,),
+            ).fetchall()
+
             for topic, topic_hash, count in results:
                 momentum = self.get_momentum(topic)
-                
+
                 if momentum >= self.momentum_threshold:
-                    trending.append({
-                        "topic": topic,
-                        "momentum": round(momentum, 2),
-                        "mentions_this_hour": count,
-                        "is_spike": momentum >= self.spike_threshold,
-                        "severity": "high" if momentum >= 5 else "medium" if momentum >= 3 else "low"
-                    })
-        
+                    trending.append(
+                        {
+                            "topic": topic,
+                            "momentum": round(momentum, 2),
+                            "mentions_this_hour": count,
+                            "is_spike": momentum >= self.spike_threshold,
+                            "severity": (
+                                "high"
+                                if momentum >= 5
+                                else "medium" if momentum >= 3 else "low"
+                            ),
+                        }
+                    )
+
         # Sort by momentum descending
         trending.sort(key=lambda x: x["momentum"], reverse=True)
         return trending[:limit]
-    
+
     def get_spike_alerts(self, limit: int = 5) -> List[Dict[str, Any]]:
         """
         Get topics with spike alerts (>3x normal volume).
-        
+
         Returns:
             List of spike alerts
         """
         return [t for t in self.get_trending_topics(limit=50) if t["is_spike"]][:limit]
-    
+
     def get_topic_history(self, topic: str, hours: int = 24) -> List[Dict[str, Any]]:
         """
         Get hourly mention counts for a topic.
-        
+
         Args:
             topic: Topic to get history for
             hours: Number of hours to look back
-        
+
         Returns:
             List of hourly counts
         """
         topic_hash = self._topic_hash(topic)
         now = datetime.utcnow()
-        
+
         history = []
         with sqlite3.connect(self.db_path) as conn:
             for i in range(hours):
                 hour_dt = now - timedelta(hours=i)
                 hour_bucket = self._get_hour_bucket(hour_dt)
-                
-                result = conn.execute("""
+
+                result = conn.execute(
+                    """
                     SELECT count FROM hourly_counts 
                     WHERE topic_hash = ? AND hour_bucket = ?
-                """, (topic_hash, hour_bucket)).fetchone()
-                
-                history.append({
-                    "hour": hour_bucket,
-                    "count": result[0] if result else 0
-                })
-        
+                """,
+                    (topic_hash, hour_bucket),
+                ).fetchone()
+
+                history.append(
+                    {"hour": hour_bucket, "count": result[0] if result else 0}
+                )
+
         return list(reversed(history))  # Oldest first
-    
+
     def cleanup_old_data(self, days: int = 7):
         """
         Remove data older than specified days.
-        
+
         Args:
             days: Number of days to keep
         """
         cutoff = datetime.utcnow() - timedelta(days=days)
         cutoff_str = cutoff.isoformat()
         cutoff_bucket = self._get_hour_bucket(cutoff)
-        
+
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 DELETE FROM topic_mentions WHERE timestamp < ?
-            """, (cutoff_str,))
-            conn.execute("""
+            """,
+                (cutoff_str,),
+            )
+            conn.execute(
+                """
                 DELETE FROM hourly_counts WHERE hour_bucket < ?
-            """, (cutoff_bucket,))
+            """,
+                (cutoff_bucket,),
+            )
             conn.commit()
-        
+
         logger.info(f"[TrendingDetector] Cleaned up data older than {days} days")
 
 

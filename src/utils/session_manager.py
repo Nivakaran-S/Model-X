@@ -5,7 +5,9 @@ import logging
 from playwright.sync_api import sync_playwright
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger("SessionManager")
 
 # Configuration
@@ -17,29 +19,30 @@ PLATFORMS = {
     "twitter": {
         "name": "Twitter/X",
         "login_url": "https://twitter.com/i/flow/login",
-        "domain": "twitter.com"
+        "domain": "twitter.com",
     },
     "facebook": {
         "name": "Facebook",
         "login_url": "https://www.facebook.com/login",
-        "domain": "facebook.com"
+        "domain": "facebook.com",
     },
     "linkedin": {
         "name": "LinkedIn",
         "login_url": "https://www.linkedin.com/login",
-        "domain": "linkedin.com"
+        "domain": "linkedin.com",
     },
     "reddit": {
         "name": "Reddit",
-        "login_url": "https://old.reddit.com/login", # Default to Old Reddit for easier login
-        "domain": "reddit.com"
+        "login_url": "https://old.reddit.com/login",  # Default to Old Reddit for easier login
+        "domain": "reddit.com",
     },
     "instagram": {
         "name": "Instagram",
         "login_url": "https://www.instagram.com/accounts/login/",
-        "domain": "instagram.com"
-    }
+        "domain": "instagram.com",
+    },
 }
+
 
 def ensure_dirs():
     """Creates necessary directories."""
@@ -47,6 +50,7 @@ def ensure_dirs():
         os.makedirs(SESSIONS_DIR)
     if not os.path.exists(USER_DATA_DIR):
         os.makedirs(USER_DATA_DIR)
+
 
 def create_session(platform_key: str):
     """
@@ -69,7 +73,7 @@ def create_session(platform_key: str):
         # ---------------------------------------------------------
         # STRATEGY 1: REDDIT (Use Firefox + Old Reddit)
         # ---------------------------------------------------------
-        if platform_key == 'reddit':
+        if platform_key == "reddit":
             logger.info("Using Firefox Engine (Best for Reddit evasion)...")
             context = p.firefox.launch_persistent_context(
                 user_data_dir=platform_user_data,
@@ -78,7 +82,7 @@ def create_session(platform_key: str):
                 # Use a standard Firefox User Agent
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
             )
-            
+
         # ---------------------------------------------------------
         # STRATEGY 2: OTHERS (Use Chromium + Stealth Args)
         # ---------------------------------------------------------
@@ -95,38 +99,46 @@ def create_session(platform_key: str):
                     "--disable-infobars",
                     "--disable-dev-shm-usage",
                     "--disable-browser-side-navigation",
-                    "--disable-features=IsolateOrigins,site-per-process"
-                ]
+                    "--disable-features=IsolateOrigins,site-per-process",
+                ],
             )
 
         # Apply Anti-Detection Script (Removes 'navigator.webdriver' property)
         page = context.pages[0] if context.pages else context.new_page()
-        page.add_init_script("""
+        page.add_init_script(
+            """
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             });
-        """)
+        """
+        )
 
         try:
             logger.info(f"Navigating to {platform['login_url']}...")
-            page.goto(platform['login_url'], wait_until='domcontentloaded')
-            
+            page.goto(platform["login_url"], wait_until="domcontentloaded")
+
             # Interactive Loop
-            print("\n" + "="*50)
+            print("\n" + "=" * 50)
             print(f"ACTION REQUIRED: Log in to {platform['name']} manually.")
-            
-            if platform_key == 'reddit':
-                print(">> You are on 'Old Reddit'. The login box is on the right-hand side.")
-                print(">> Once logged in, it might redirect you to New Reddit. That is fine.")
-            
-            print("="*50 + "\n")
-            
-            input(f"Press ENTER here ONLY after you see the {platform['name']} Home Feed... ")
+
+            if platform_key == "reddit":
+                print(
+                    ">> You are on 'Old Reddit'. The login box is on the right-hand side."
+                )
+                print(
+                    ">> Once logged in, it might redirect you to New Reddit. That is fine."
+                )
+
+            print("=" * 50 + "\n")
+
+            input(
+                f"Press ENTER here ONLY after you see the {platform['name']} Home Feed... "
+            )
 
             # Save State
             logger.info("Capturing storage state...")
             context.storage_state(path=session_file)
-            
+
             # Verify file
             if os.path.exists(session_file):
                 size = os.path.getsize(session_file)
@@ -139,6 +151,7 @@ def create_session(platform_key: str):
         finally:
             context.close()
 
+
 def list_sessions():
     ensure_dirs()
     files = [f for f in os.listdir(SESSIONS_DIR) if f.endswith("_storage_state.json")]
@@ -148,6 +161,7 @@ def list_sessions():
         print(f"Found {len(files)} active sessions:")
         for f in files:
             print(f" - {f}")
+
 
 if __name__ == "__main__":
     while True:
@@ -159,22 +173,22 @@ if __name__ == "__main__":
         print("5. Create/Refresh Instagram Session")
         print("6. List Saved Sessions")
         print("q. Quit")
-        
+
         choice = input("Select an option: ").strip().lower()
-        
-        if choice == '1':
+
+        if choice == "1":
             create_session("twitter")
-        elif choice == '2':
+        elif choice == "2":
             create_session("facebook")
-        elif choice == '3':
+        elif choice == "3":
             create_session("linkedin")
-        elif choice == '4':
+        elif choice == "4":
             create_session("reddit")
-        elif choice == '5':
+        elif choice == "5":
             create_session("instagram")
-        elif choice == '6':
+        elif choice == "6":
             list_sessions()
-        elif choice == 'q':
+        elif choice == "q":
             break
         else:
             print("Invalid option.")

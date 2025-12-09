@@ -2,6 +2,7 @@
 src/storage/storage_manager.py
 Unified storage manager orchestrating 3-tier deduplication pipeline
 """
+
 import logging
 from typing import Dict, Any, List, Optional, Tuple
 import uuid
@@ -20,53 +21,51 @@ logger = logging.getLogger("storage_manager")
 class StorageManager:
     """
     Unified storage interface implementing 3-tier deduplication:
-    
+
     Tier 1: SQLite - Fast hash lookup (microseconds)
     Tier 2: ChromaDB - Semantic similarity (milliseconds)
     Tier 3: Accept unique events
-    
+
     Also handles:
     - Feed persistence (CSV export)
     - Knowledge graph tracking (Neo4j)
     - Statistics and monitoring
     """
-    
+
     def __init__(self):
         logger.info("=" * 80)
         logger.info("[StorageManager] Initializing multi-database storage system")
         logger.info("=" * 80)
-        
+
         # Initialize all storage backends
         self.sqlite_cache = SQLiteCache()
         self.chromadb = ChromaDBStore()
         self.neo4j = Neo4jGraph()
-        
+
         # Statistics tracking
         self.stats = {
             "total_processed": 0,
             "exact_duplicates": 0,
             "semantic_duplicates": 0,
             "unique_stored": 0,
-            "errors": 0
+            "errors": 0,
         }
-        
+
         config_summary = config.get_config_summary()
         for key, value in config_summary.items():
             logger.info(f"  {key}: {value}")
-        
+
         logger.info("=" * 80)
-    
+
     def is_duplicate(
-        self, 
-        summary: str, 
-        threshold: Optional[float] = None
+        self, summary: str, threshold: Optional[float] = None
     ) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
         """
         Check if summary is duplicate using 3-tier pipeline.
-        
+
         Returns:
             (is_duplicate, reason, match_data)
-            
+
         Reasons:
             - "exact_match" - SQLite hash match
             - "semantic_match" - ChromaDB similarity match
@@ -74,16 +73,16 @@ class StorageManager:
         """
         if not summary or len(summary.strip()) < 10:
             return False, "too_short", None
-        
+
         self.stats["total_processed"] += 1
-        
+
         # TIER 1: SQLite exact match (fastest)
         is_exact, event_id = self.sqlite_cache.has_exact_match(summary)
         if is_exact:
             self.stats["exact_duplicates"] += 1
             logger.info(f"[DEDUPE] ✓ EXACT MATCH (SQLite): {summary[:60]}...")
             return True, "exact_match", {"matched_event_id": event_id}
-        
+
         # TIER 2: ChromaDB semantic similarity
         similar = self.chromadb.find_similar(summary, threshold=threshold)
         if similar:
@@ -93,11 +92,11 @@ class StorageManager:
                 f"similarity={similar['similarity']:.3f} | {summary[:60]}..."
             )
             return True, "semantic_match", similar
-        
+
         # TIER 3: Unique event
         logger.info(f"[DEDUPE] ✓ UNIQUE EVENT: {summary[:60]}...")
         return False, "unique", None
-    
+
     def store_event(
         self,
         event_id: str,
@@ -107,28 +106,28 @@ class StorageManager:
         impact_type: str,
         confidence_score: float,
         timestamp: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ):
         """
         Store event in all databases.
         Should only be called AFTER is_duplicate() returns False.
         """
         timestamp = timestamp or datetime.utcnow().isoformat()
-        
+
         try:
             # Store in SQLite cache
             self.sqlite_cache.add_entry(summary, event_id)
-            
+
             # Store in ChromaDB for semantic search
             chroma_metadata = {
                 "domain": domain,
                 "severity": severity,
                 "impact_type": impact_type,
                 "confidence_score": confidence_score,
-                "timestamp": timestamp
+                "timestamp": timestamp,
             }
             self.chromadb.add_event(event_id, summary, chroma_metadata)
-            
+
             # Store in Neo4j knowledge graph
             self.neo4j.add_event(
                 event_id=event_id,
@@ -138,167 +137,194 @@ class StorageManager:
                 impact_type=impact_type,
                 confidence_score=confidence_score,
                 timestamp=timestamp,
-                metadata=metadata
+                metadata=metadata,
             )
-            
+
             self.stats["unique_stored"] += 1
             logger.debug(f"[STORE] Stored event {event_id[:8]}... in all databases")
-            
+
         except Exception as e:
             self.stats["errors"] += 1
             logger.error(f"[STORE] Error storing event: {e}")
-    
+
     def link_similar_events(self, event_id_1: str, event_id_2: str, similarity: float):
         """Create similarity link in Neo4j"""
         self.neo4j.link_similar_events(event_id_1, event_id_2, similarity)
-    
-    def export_feed_to_csv(self, feed: List[Dict[str, Any]], filename: Optional[str] = None):
+
+    def export_feed_to_csv(
+        self, feed: List[Dict[str, Any]], filename: Optional[str] = None
+    ):
         """
         Export feed to CSV for archival and analysis.
         Creates daily files by default.
         """
         if not feed:
             return
-        
+
         try:
             # Generate filename
             if filename is None:
                 date_str = datetime.utcnow().strftime("%Y-%m-%d")
                 filename = f"feed_{date_str}.csv"
-            
+
             filepath = Path(config.CSV_EXPORT_DIR) / filename
             filepath.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Check if file exists to decide whether to write header
             file_exists = filepath.exists()
-            
+
             fieldnames = [
-                "event_id", "timestamp", "domain", "severity", 
-                "impact_type", "confidence_score", "summary"
+                "event_id",
+                "timestamp",
+                "domain",
+                "severity",
+                "impact_type",
+                "confidence_score",
+                "summary",
             ]
-            
-            with open(filepath, 'a', newline='', encoding='utf-8') as f:
+
+            with open(filepath, "a", newline="", encoding="utf-8") as f:
                 writer = csv.DictWriter(f, fieldnames=fieldnames)
-                
+
                 if not file_exists:
                     writer.writeheader()
-                
+
                 for event in feed:
-                    writer.writerow({
-                        "event_id": event.get("event_id", ""),
-                        "timestamp": event.get("timestamp", ""),
-                        "domain": event.get("domain", event.get("target_agent", "")),
-                        "severity": event.get("severity", ""),
-                        "impact_type": event.get("impact_type", ""),
-                        "confidence_score": event.get("confidence_score", event.get("confidence", 0)),
-                        "summary": event.get("summary", event.get("content_summary", ""))
-                    })
-            
+                    writer.writerow(
+                        {
+                            "event_id": event.get("event_id", ""),
+                            "timestamp": event.get("timestamp", ""),
+                            "domain": event.get(
+                                "domain", event.get("target_agent", "")
+                            ),
+                            "severity": event.get("severity", ""),
+                            "impact_type": event.get("impact_type", ""),
+                            "confidence_score": event.get(
+                                "confidence_score", event.get("confidence", 0)
+                            ),
+                            "summary": event.get(
+                                "summary", event.get("content_summary", "")
+                            ),
+                        }
+                    )
+
             logger.info(f"[CSV] Exported {len(feed)} events to {filepath}")
-            
+
         except Exception as e:
             logger.error(f"[CSV] Export error: {e}")
-    
+
     def get_recent_feeds(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Retrieve recent feeds from SQLite with ChromaDB metadata.
-        
+
         Args:
             limit: Maximum number of feeds to return
-            
+
         Returns:
             List of feed dictionaries with full metadata
         """
         try:
             entries = self.sqlite_cache.get_all_entries(limit=limit, offset=0)
-            
+
             feeds = []
             for entry in entries:
                 event_id = entry.get("event_id")
                 if not event_id:
                     continue
-                
+
                 try:
                     chroma_data = self.chromadb.collection.get(ids=[event_id])
-                    if chroma_data and chroma_data['metadatas']:
-                        metadata = chroma_data['metadatas'][0]
-                        feeds.append({
-                            "event_id": event_id,
-                            "summary": entry.get("summary_preview", ""),
-                            "domain": metadata.get("domain", "unknown"),
-                            "severity": metadata.get("severity", "medium"),
-                            "impact_type": metadata.get("impact_type", "risk"),
-                            "confidence": metadata.get("confidence_score", 0.5),
-                            "timestamp": metadata.get("timestamp", entry.get("last_seen"))
-                        })
+                    if chroma_data and chroma_data["metadatas"]:
+                        metadata = chroma_data["metadatas"][0]
+                        feeds.append(
+                            {
+                                "event_id": event_id,
+                                "summary": entry.get("summary_preview", ""),
+                                "domain": metadata.get("domain", "unknown"),
+                                "severity": metadata.get("severity", "medium"),
+                                "impact_type": metadata.get("impact_type", "risk"),
+                                "confidence": metadata.get("confidence_score", 0.5),
+                                "timestamp": metadata.get(
+                                    "timestamp", entry.get("last_seen")
+                                ),
+                            }
+                        )
                 except Exception as e:
                     logger.warning(f"Could not fetch ChromaDB data for {event_id}: {e}")
-                    feeds.append({
-                        "event_id": event_id,
-                        "summary": entry.get("summary_preview", ""),
-                        "domain": "unknown",
-                        "severity": "medium",
-                        "impact_type": "risk",
-                        "confidence": 0.5,
-                        "timestamp": entry.get("last_seen")
-                    })
-            
+                    feeds.append(
+                        {
+                            "event_id": event_id,
+                            "summary": entry.get("summary_preview", ""),
+                            "domain": "unknown",
+                            "severity": "medium",
+                            "impact_type": "risk",
+                            "confidence": 0.5,
+                            "timestamp": entry.get("last_seen"),
+                        }
+                    )
+
             return feeds
-            
+
         except Exception as e:
             logger.error(f"[FEED_RETRIEVAL] Error: {e}")
             return []
-    
+
     def get_feeds_since(self, timestamp: datetime) -> List[Dict[str, Any]]:
         """
         Get all feeds added after given timestamp.
-        
+
         Args:
             timestamp: Datetime object
-            
+
         Returns:
             List of feed dictionaries
         """
         try:
             iso_timestamp = timestamp.isoformat()
             entries = self.sqlite_cache.get_entries_since(iso_timestamp)
-            
+
             feeds = []
             for entry in entries:
                 event_id = entry.get("event_id")
                 if not event_id:
                     continue
-                
+
                 try:
                     chroma_data = self.chromadb.collection.get(ids=[event_id])
-                    if chroma_data and chroma_data['metadatas']:
-                        metadata = chroma_data['metadatas'][0]
-                        feeds.append({
+                    if chroma_data and chroma_data["metadatas"]:
+                        metadata = chroma_data["metadatas"][0]
+                        feeds.append(
+                            {
+                                "event_id": event_id,
+                                "summary": entry.get("summary_preview", ""),
+                                "domain": metadata.get("domain", "unknown"),
+                                "severity": metadata.get("severity", "medium"),
+                                "impact_type": metadata.get("impact_type", "risk"),
+                                "confidence": metadata.get("confidence_score", 0.5),
+                                "timestamp": metadata.get(
+                                    "timestamp", entry.get("last_seen")
+                                ),
+                            }
+                        )
+                except Exception as e:
+                    feeds.append(
+                        {
                             "event_id": event_id,
                             "summary": entry.get("summary_preview", ""),
-                            "domain": metadata.get("domain", "unknown"),
-                            "severity": metadata.get("severity", "medium"),
-                            "impact_type": metadata.get("impact_type", "risk"),
-                            "confidence": metadata.get("confidence_score", 0.5),
-                            "timestamp": metadata.get("timestamp", entry.get("last_seen"))
-                        })
-                except Exception as e:
-                    feeds.append({
-                        "event_id": event_id,
-                        "summary": entry.get("summary_preview", ""),
-                        "domain": "unknown",
-                        "severity": "medium",
-                        "impact_type": "risk",
-                        "confidence": 0.5,
-                        "timestamp": entry.get("last_seen")
-                    })
-            
+                            "domain": "unknown",
+                            "severity": "medium",
+                            "impact_type": "risk",
+                            "confidence": 0.5,
+                            "timestamp": entry.get("last_seen"),
+                        }
+                    )
+
             return feeds
-            
+
         except Exception as e:
             logger.error(f"[FEED_RETRIEVAL] Error: {e}")
             return []
-    
+
     def get_feed_count(self) -> int:
         """Get total feed count from database"""
         try:
@@ -307,7 +333,6 @@ class StorageManager:
         except Exception as e:
             logger.error(f"[FEED_COUNT] Error: {e}")
             return 0
-    
 
     def cleanup_old_data(self):
         """Cleanup old entries from SQLite cache"""
@@ -317,22 +342,23 @@ class StorageManager:
                 logger.info(f"[CLEANUP] Removed {deleted} old cache entries")
         except Exception as e:
             logger.error(f"[CLEANUP] Error: {e}")
-    
+
     def get_comprehensive_stats(self) -> Dict[str, Any]:
         """Get statistics from all storage backends"""
         return {
             "deduplication": {
                 **self.stats,
                 "dedup_rate": (
-                    (self.stats["exact_duplicates"] + self.stats["semantic_duplicates"]) 
-                    / max(self.stats["total_processed"], 1) * 100
-                )
+                    (self.stats["exact_duplicates"] + self.stats["semantic_duplicates"])
+                    / max(self.stats["total_processed"], 1)
+                    * 100
+                ),
             },
             "sqlite": self.sqlite_cache.get_stats(),
             "chromadb": self.chromadb.get_stats(),
-            "neo4j": self.neo4j.get_stats()
+            "neo4j": self.neo4j.get_stats(),
         }
-    
+
     def __del__(self):
         """Cleanup on destruction"""
         try:
