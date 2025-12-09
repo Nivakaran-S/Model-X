@@ -1,0 +1,18 @@
+Close:
+  drift_status: true
+  p_value: .nan
+High:
+  drift_status: true
+  p_value: .nan
+Low:
+  drift_status: true
+  p_value: .nan
+Open:
+  drift_status: true
+  p_value: .nan
+Price:
+  drift_status: true
+  p_value: 0.0
+Volume:
+  drift_status: true
+  p_value: .nan

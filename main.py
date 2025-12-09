@@ -44,9 +44,9 @@ def check_and_train_models():
     """
     from pathlib import Path
     import subprocess
-    
+
     PROJECT_ROOT = Path(__file__).parent
-    
+
     # Define model checks: (name, model_path, train_command)
     model_checks = [
         {
@@ -55,7 +55,10 @@ def check_and_train_models():
                 PROJECT_ROOT / "models" / "anomaly-detection" / "artifacts" / "models",
             ],
             "check_files": ["*.joblib", "*.pkl"],
-            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "anomaly-detection" / "main.py")]
+            "train_cmd": [
+                sys.executable,
+                str(PROJECT_ROOT / "models" / "anomaly-detection" / "main.py")
+            ]
         },
         {
             "name": "Weather Prediction",
@@ -63,26 +66,42 @@ def check_and_train_models():
                 PROJECT_ROOT / "models" / "weather-prediction" / "artifacts" / "models",
             ],
             "check_files": ["*.h5", "*.keras"],
-            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "weather-prediction" / "main.py"), "--mode", "full"]
+            "train_cmd": [
+                sys.executable,
+                str(PROJECT_ROOT / "models" / "weather-prediction" / "main.py"),
+                "--mode", "full"
+            ]
         },
         {
             "name": "Currency Prediction",
             "check_paths": [
-                PROJECT_ROOT / "models" / "currency-volatility-prediction" / "artifacts" / "models",
+                PROJECT_ROOT / "models" / "currency-volatility-prediction"
+                / "artifacts" / "models",
             ],
             "check_files": ["*.h5", "*.keras"],
-            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "currency-volatility-prediction" / "main.py"), "--mode", "full"]
+            "train_cmd": [
+                sys.executable,
+                str(PROJECT_ROOT / "models" / "currency-volatility-prediction"
+                    / "main.py"),
+                "--mode", "full"
+            ]
         },
         {
             "name": "Stock Prediction",
             "check_paths": [
-                PROJECT_ROOT / "models" / "stock-price-prediction" / "artifacts" / "models",
+                PROJECT_ROOT / "models" / "stock-price-prediction"
+                / "artifacts" / "models",
             ],
             "check_files": ["*.h5", "*.keras"],
-            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "stock-price-prediction" / "main.py"), "--mode", "full"]
+            "train_cmd": [
+                sys.executable,
+                str(PROJECT_ROOT / "models" / "stock-price-prediction"
+                    / "main.py"),
+                "--mode", "full"
+            ]
         },
     ]
-    
+
     def has_trained_model(check_paths, check_files):
         """Check if any trained model files exist."""
         for path in check_paths:
@@ -94,7 +113,7 @@ def check_and_train_models():
                     if list(path.glob(f"**/{pattern}")):
                         return True
         return False
-    
+
     def train_in_background(name, cmd):
         """Run training in a background thread."""
         def _train():
@@ -115,11 +134,11 @@ def check_and_train_models():
                 logger.error(f"[AUTO-TRAIN] ✗ {name} training timed out (30 min)")
             except Exception as e:
                 logger.error(f"[AUTO-TRAIN] ✗ {name} training error: {e}")
-        
+
         thread = threading.Thread(target=_train, daemon=True, name=f"train_{name}")
         thread.start()
         return thread
-    
+
     # Check each model
     training_threads = []
     for model in model_checks:
@@ -129,12 +148,12 @@ def check_and_train_models():
             logger.warning(f"[MODEL CHECK] ⚠ {model['name']} - No model found, starting training...")
             thread = train_in_background(model["name"], model["train_cmd"])
             training_threads.append((model["name"], thread))
-    
+
     if training_threads:
         logger.info(f"[AUTO-TRAIN] Started {len(training_threads)} background training jobs")
     else:
         logger.info("[MODEL CHECK] All models found - no training needed")
-    
+
     return training_threads
 
 
@@ -331,7 +350,7 @@ def get_all_matching_districts(feed: Dict[str, Any]) -> List[str]:
     Returns list of all matching district names.
     """
     summary = feed.get("summary", "").lower()
-    
+
     # Sri Lankan districts
     districts = [
         "Colombo", "Gampaha", "Kalutara", "Kandy", "Matale", "Nuwara Eliya",
@@ -340,7 +359,7 @@ def get_all_matching_districts(feed: Dict[str, Any]) -> List[str]:
         "Kurunegala", "Puttalam", "Anuradhapura", "Polonnaruwa", "Badulla",
         "Moneragala", "Ratnapura", "Kegalle"
     ]
-    
+
     # Province to districts mapping
     province_mapping = {
         "western province": ["Colombo", "Gampaha", "Kalutara"],
@@ -366,19 +385,19 @@ def get_all_matching_districts(feed: Dict[str, Any]) -> List[str]:
         "sabaragamuwa province": ["Ratnapura", "Kegalle"],
         "sabaragamuwa": ["Ratnapura", "Kegalle"],
     }
-    
+
     matched_districts = set()
-    
+
     # Check for province mentions first
     for province, province_districts in province_mapping.items():
         if province in summary:
             matched_districts.update(province_districts)
-    
+
     # Check for direct district mentions
     for district in districts:
         if district.lower() in summary:
             matched_districts.add(district)
-    
+
     return list(matched_districts)
 
 
@@ -390,7 +409,7 @@ def run_graph_loop():
     logger.info("="*80)
     logger.info("[GRAPH THREAD] Starting Roger combinedAgentGraph loop")
     logger.info("="*80)
-    
+
     initial_state = CombinedAgentState(
         domain_insights=[],
         final_ranked_feed=[],
@@ -398,14 +417,14 @@ def run_graph_loop():
         max_runs=999,  # Continuous mode
         route=None
     )
-    
+
     try:
         # Note: Using synchronous invoke since we're in a thread
         # Increase recursion limit for the multi-agent graph (default is 25)
         config = {"recursion_limit": 100}
         for event in graph.stream(initial_state, config=config):
             logger.info(f"[GRAPH] Event nodes: {list(event.keys())}")
-            
+
             for node_name, node_output in event.items():
                 # Extract feed data
                 if hasattr(node_output, 'final_ranked_feed'):
@@ -414,17 +433,17 @@ def run_graph_loop():
                     feeds = node_output.get('final_ranked_feed', [])
                 else:
                     continue
-                
+
                 if feeds:
                     logger.info(f"[GRAPH] {node_name} produced {len(feeds)} feeds")
-                    
+
                     # FIELD_NORMALIZATION: Transform graph format to frontend format
                     for feed_item in feeds:
                         if isinstance(feed_item, dict):
                             event_data = feed_item
                         else:
                             event_data = feed_item.__dict__ if hasattr(feed_item, '__dict__') else {}
-                        
+
                         # Normalize field names: graph uses content_summary/target_agent, frontend expects summary/domain
                         event_id = event_data.get("event_id", str(uuid.uuid4()))
                         summary = event_data.get("content_summary") or event_data.get("summary", "")
@@ -433,10 +452,10 @@ def run_graph_loop():
                         impact_type = event_data.get("impact_type", "risk")
                         confidence = event_data.get("confidence_score", event_data.get("confidence", 0.5))
                         timestamp = event_data.get("timestamp", datetime.utcnow().isoformat())
-                        
+
                         # Check for duplicates
                         is_dup, _, _ = storage_manager.is_duplicate(summary)
-                        
+
                         if not is_dup:
                             try:
                                 storage_manager.store_event(
@@ -450,23 +469,23 @@ def run_graph_loop():
                                 logger.info(f"[GRAPH] Stored new feed: {summary[:60]}...")
                             except Exception as storage_error:
                                 logger.warning(f"[GRAPH] Storage error (continuing): {storage_error}")
-                            
+
                             # DIRECT_BROADCAST_FIX: Set first_run_complete and broadcast
                             if not current_state.get('first_run_complete'):
                                 current_state['first_run_complete'] = True
                                 current_state['status'] = 'operational'
                                 logger.info("[GRAPH] FIRST RUN COMPLETE - Broadcasting to frontend!")
-                                
+
                                 # Trigger broadcast from sync thread to async loop
                                 if main_event_loop:
                                     asyncio.run_coroutine_threadsafe(
                                         manager.broadcast(current_state),
                                         main_event_loop
                                     )
-                
+
                 # Small delay to prevent CPU overload
                 time.sleep(0.3)
-                
+
     except Exception as e:
         logger.error(f"[GRAPH THREAD] Error: {e}", exc_info=True)
 
@@ -478,47 +497,47 @@ async def database_polling_loop():
     """
     global current_state
     last_check = datetime.utcnow()
-    
+
     logger.info("[DB_POLLER] Starting database polling loop")
-    
+
     while True:
         try:
             await asyncio.sleep(2.0)  # Poll every 2 seconds
-            
+
             # Get new feeds since last check
             new_feeds = storage_manager.get_feeds_since(last_check)
             last_check = datetime.utcnow()
-            
+
             if new_feeds:
                 logger.info(f"[DB_POLLER] Found {len(new_feeds)} new feeds")
-                
+
                 # Filter duplicates (by event_id)
                 unique_feeds = []
                 for feed in new_feeds:
                     event_id = feed.get("event_id")
                     if event_id and event_id not in seen_event_ids:
                         seen_event_ids.add(event_id)
-                        
+
                         # Add district categorization for map
                         feed["district"] = categorize_feed_by_district(feed)
                         unique_feeds.append(feed)
-                
+
                 if unique_feeds:
                     # Update current state
                     current_state['final_ranked_feed'] = unique_feeds + current_state.get('final_ranked_feed', [])
                     current_state['final_ranked_feed'] = current_state['final_ranked_feed'][:100]  # Keep last 100
                     current_state['status'] = 'operational'
                     current_state['last_update'] = datetime.utcnow().isoformat()
-                    
+
                     # Mark first run as complete (frontend loading screen can now hide)
                     if not current_state.get('first_run_complete'):
                         current_state['first_run_complete'] = True
                         logger.info("[DB_POLLER] First graph run complete! Frontend loading screen can now hide.")
-                    
+
                     # Broadcast to WebSocket clients
                     await manager.broadcast(current_state)
                     logger.info(f"[DB_POLLER] Broadcasted {len(unique_feeds)} unique feeds")
-            
+
         except Exception as e:
             logger.error(f"[DB_POLLER] Error: {e}")
 
@@ -528,14 +547,14 @@ async def database_polling_loop():
 async def startup_event():
     global main_event_loop
     main_event_loop = asyncio.get_event_loop()
-    
+
     logger.info("[API] Starting Roger API...")
-    
+
     # Start graph execution in separate thread
     graph_thread = threading.Thread(target=run_graph_loop, daemon=True)
     graph_thread.start()
     logger.info("[API] Graph thread started")
-    
+
     # Start database polling loop
     asyncio.create_task(database_polling_loop())
     logger.info("[API] Database polling started")
@@ -580,7 +599,7 @@ def get_feeds_from_db(limit: int = 100):
     """Get feeds directly from database (for initial load)"""
     try:
         feeds = storage_manager.get_recent_feeds(limit=limit)
-        
+
         # FIELD_NORMALIZATION + district categorization
         normalized_feeds = []
         for feed in feeds:
@@ -596,7 +615,7 @@ def get_feeds_from_db(limit: int = 100):
                 "district": categorize_feed_by_district(feed)
             }
             normalized_feeds.append(normalized)
-        
+
         return {
             "events": normalized_feeds,
             "total": len(normalized_feeds),
@@ -612,7 +631,7 @@ def get_feeds_by_district(district: str, limit: int = 50):
     """Get feeds for specific district"""
     try:
         all_feeds = storage_manager.get_recent_feeds(limit=200)
-        
+
         # Filter by district
         district_feeds = []
         for feed in all_feeds:
@@ -621,7 +640,7 @@ def get_feeds_by_district(district: str, limit: int = 50):
                 district_feeds.append(feed)
                 if len(district_feeds) >= limit:
                     break
-        
+
         return {
             "district": district,
             "events": district_feeds,
@@ -692,14 +711,14 @@ def get_national_threat_score():
     """
     try:
         from src.utils.utils import tool_rivernet_status, tool_calculate_national_threat, tool_dmc_alerts
-        
+
         # Get river data
         river_data = None
         try:
             river_data = tool_rivernet_status()
         except Exception as e:
             logger.warning(f"[ThreatAPI] RiverNet unavailable: {e}")
-        
+
         # Get DMC alerts
         dmc_data = None
         try:
@@ -707,13 +726,13 @@ def get_national_threat_score():
             dmc_data = dmc_result.get("alerts", [])
         except Exception as e:
             logger.warning(f"[ThreatAPI] DMC unavailable: {e}")
-        
+
         # Calculate threat score
         threat_data = tool_calculate_national_threat(
             river_data=river_data,
             dmc_alerts=dmc_data
         )
-        
+
         return {
             "status": "success",
             **threat_data
@@ -728,128 +747,8 @@ def get_national_threat_score():
         }
 
 
-@app.get("/api/weather/predictions")
-def get_weather_predictions():
-    """
-    Get next-day weather predictions for all 25 Sri Lankan districts.
-    
-    Returns predictions from trained LSTM models (or climate fallback if models not available).
-    Includes temperature, rainfall, humidity, flood risk, and severity for each district.
-    """
-    try:
-        from pathlib import Path
-        import json
-        from datetime import datetime, timedelta
-        
-        # Path to predictions output
-        predictions_dir = Path(__file__).parent / "models" / "weather-prediction" / "output" / "predictions"
-        
-        # Try to find most recent predictions file
-        prediction_files = list(predictions_dir.glob("predictions_*.json")) if predictions_dir.exists() else []
-        
-        if prediction_files:
-            # Get most recent predictions file
-            latest_file = max(prediction_files, key=lambda p: p.stem)
-            
-            with open(latest_file, "r") as f:
-                predictions = json.load(f)
-            
-            return {
-                "status": "success",
-                "prediction_date": predictions.get("prediction_date", ""),
-                "generated_at": predictions.get("generated_at", ""),
-                "districts": predictions.get("districts", {}),
-                "total_districts": len(predictions.get("districts", {})),
-                "source": "lstm_models" if not predictions.get("is_fallback") else "climate_fallback"
-            }
-        
-        # No predictions file - try to generate on-the-fly
-        try:
-            from models.weather_prediction.src.components.predictor import WeatherPredictor
-            
-            predictor = WeatherPredictor()
-            predictions = predictor.predict_all_districts()
-            
-            return {
-                "status": "success",
-                "prediction_date": predictions.get("prediction_date", (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")),
-                "generated_at": predictions.get("generated_at", datetime.now().isoformat()),
-                "districts": predictions.get("districts", {}),
-                "total_districts": len(predictions.get("districts", {})),
-                "source": "live_prediction"
-            }
-        except Exception as pred_err:
-            logger.warning(f"[WeatherAPI] Could not generate live predictions: {pred_err}")
-        
-        # Fallback - no predictions available
-        return {
-            "status": "no_data",
-            "message": "Weather predictions not available. Run: python models/weather-prediction/main.py --mode predict",
-            "prediction_date": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
-            "generated_at": datetime.now().isoformat(),
-            "districts": {},
-            "total_districts": 0
-        }
-        
-    except Exception as e:
-        logger.error(f"[WeatherAPI] Error fetching predictions: {e}")
-        return {
-            "status": "error",
-            "error": str(e),
-            "districts": {},
-            "total_districts": 0
-        }
-
-
-# ============================================
-# CURRENCY PREDICTION ENDPOINTS
-# ============================================
-
-@app.get("/api/currency/prediction")
-def get_currency_prediction():
-    """
-    Get next-day USD/LKR currency prediction.
-    
-    Returns prediction from trained GRU model (or fallback if model not available).
-    """
-    try:
-        from pathlib import Path
-        import json
-        from datetime import datetime, timedelta
-        
-        # Path to currency predictions output
-        predictions_dir = Path(__file__).parent / "models" / "currency-volatility-prediction" / "output" / "predictions"
-        
-        # Try to find most recent predictions file
-        prediction_files = list(predictions_dir.glob("currency_prediction_*.json")) if predictions_dir.exists() else []
-        
-        if prediction_files:
-            # Get most recent predictions file
-            latest_file = max(prediction_files, key=lambda p: p.stem)
-            
-            with open(latest_file, "r") as f:
-                prediction = json.load(f)
-            
-            return {
-                "status": "success",
-                "prediction": prediction,
-                "source": "gru_model" if not prediction.get("is_fallback") else "fallback"
-            }
-        
-        # No predictions file
-        return {
-            "status": "no_data",
-            "message": "Currency prediction not available. Run: python models/currency-volatility-prediction/main.py --mode predict",
-            "prediction": None
-        }
-        
-    except Exception as e:
-        logger.error(f"[CurrencyAPI] Error fetching prediction: {e}")
-        return {
-            "status": "error",
-            "error": str(e),
-            "prediction": None
-        }
+# NOTE: Weather predictions endpoint moved to async version below (line ~1540)
+# NOTE: Currency prediction endpoint moved to async version below (line ~1680)
 
 
 @app.get("/api/currency/history")
@@ -866,23 +765,23 @@ def get_currency_history(days: int = 7):
     try:
         from pathlib import Path
         import pandas as pd
-        
+
         # Path to currency data
         data_dir = Path(__file__).parent / "models" / "currency-volatility-prediction" / "artifacts" / "data"
-        
+
         # Find the data file
         data_files = list(data_dir.glob("currency_data_*.csv")) if data_dir.exists() else []
-        
+
         if data_files:
             # Get most recent data file
             latest_file = max(data_files, key=lambda p: p.stem)
             df = pd.read_csv(latest_file)
-            
+
             # Get last N days
             df['date'] = pd.to_datetime(df['date'])
             df = df.sort_values('date', ascending=False).head(days)
             df = df.sort_values('date', ascending=True)
-            
+
             history = []
             for _, row in df.iterrows():
                 history.append({
@@ -891,19 +790,19 @@ def get_currency_history(days: int = 7):
                     "high": float(row.get('high', row['close'])),
                     "low": float(row.get('low', row['close']))
                 })
-            
+
             return {
                 "status": "success",
                 "history": history,
                 "days": len(history)
             }
-        
+
         return {
             "status": "no_data",
             "message": "No historical data available. Run data ingestion first.",
             "history": []
         }
-        
+
     except Exception as e:
         logger.error(f"[CurrencyAPI] Error fetching history: {e}")
         return {
@@ -926,10 +825,10 @@ def get_trending_topics(limit: int = 10):
     """
     try:
         from src.utils.trending_detector import get_trending_now, get_spikes
-        
+
         trending = get_trending_now(limit=limit)
         spikes = get_spikes()
-        
+
         return {
             "status": "success",
             "trending_topics": trending,
@@ -937,7 +836,7 @@ def get_trending_topics(limit: int = 10):
             "total_trending": len(trending),
             "total_spikes": len(spikes)
         }
-        
+
     except Exception as e:
         logger.error(f"[TrendingAPI] Error: {e}")
         return {
@@ -959,12 +858,12 @@ def get_topic_history(topic: str, hours: int = 24):
     """
     try:
         from src.utils.trending_detector import get_trending_detector
-        
+
         detector = get_trending_detector()
         history = detector.get_topic_history(topic, hours=hours)
         momentum = detector.get_momentum(topic)
         is_spike = detector.is_spike(topic)
-        
+
         return {
             "status": "success",
             "topic": topic,
@@ -972,7 +871,7 @@ def get_topic_history(topic: str, hours: int = 24):
             "is_spike": is_spike,
             "history": history
         }
-        
+
     except Exception as e:
         logger.error(f"[TrendingAPI] Error getting history for {topic}: {e}")
         return {
@@ -997,21 +896,21 @@ def record_topic_mention(topic: str, source: str = "manual", domain: str = "gene
     """
     try:
         from src.utils.trending_detector import record_topic_mention as record_mention
-        
+
         record_mention(topic=topic, source=source, domain=domain)
-        
+
         # Get updated momentum
         from src.utils.trending_detector import get_trending_detector
         detector = get_trending_detector()
         momentum = detector.get_momentum(topic)
-        
+
         return {
             "status": "success",
             "message": f"Recorded mention for '{topic}'",
             "current_momentum": momentum,
             "is_spike": detector.is_spike(topic)
         }
-        
+
     except Exception as e:
         logger.error(f"[TrendingAPI] Error recording mention: {e}")
         return {
@@ -1033,45 +932,45 @@ _language_detector = None
 def _load_anomaly_components():
     """Load anomaly detection model and vectorizer"""
     global _anomaly_model, _vectorizer, _language_detector
-    
+
     if _anomaly_model is not None:
         return True
-    
+
     try:
         import joblib
         from pathlib import Path
-        
+
         # Model path
         models_dir = Path(__file__).parent / "models" / "anomaly-detection" / "src" / "components"
         output_dir = Path(__file__).parent / "models" / "anomaly-detection" / "output"
-        
+
         # Try to load isolation_forest model (best for anomaly detection)
         model_paths = [
             output_dir / "isolation_forest_model.joblib",
             output_dir / "lof_model.joblib",
             models_dir.parent / "output" / "isolation_forest_model.joblib",
         ]
-        
+
         for model_path in model_paths:
             if model_path.exists():
                 _anomaly_model = joblib.load(model_path)
                 logger.info(f"[AnomalyAPI] Loaded model from {model_path}")
                 break
-        
+
         if _anomaly_model is None:
             logger.warning("[AnomalyAPI] No trained model found. Run training first.")
             return False
-        
+
         # Load vectorizer and language detector
         from models.anomaly_detection.src.utils.vectorizer import get_vectorizer
         from models.anomaly_detection.src.utils.language_detector import detect_language
-        
+
         _vectorizer = get_vectorizer()
         _language_detector = detect_language
-        
+
         logger.info("[AnomalyAPI] ✓ All anomaly components loaded")
         return True
-        
+
     except Exception as e:
         logger.error(f"[AnomalyAPI] Failed to load components: {e}")
         return False
@@ -1093,10 +992,10 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
         # Handle input
         if text and not texts:
             texts = [text]
-        
+
         if not texts:
             return {"error": "No text provided. Use 'text' or 'texts' field.", "predictions": []}
-        
+
         # Load components
         if not _load_anomaly_components():
             # If no model, return scores based on heuristics
@@ -1113,21 +1012,21 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
                 "model_status": "not_trained",
                 "message": "Model not trained yet. Using default scores."
             }
-        
+
         # Vectorize texts
         predictions = []
         for t in texts:
             try:
                 # Detect language
                 lang, lang_conf = _language_detector(t)
-                
+
                 # Vectorize
                 vector = _vectorizer.vectorize(t, lang)
-                
+
                 # Predict
                 # Isolation Forest returns -1 for anomalies, 1 for normal
                 prediction = _anomaly_model.predict([vector])[0]
-                
+
                 # Get anomaly score (decision_function returns negative for anomalies)
                 if hasattr(_anomaly_model, 'decision_function'):
                     score = -_anomaly_model.decision_function([vector])[0]  # Invert so higher = more anomalous
@@ -1135,7 +1034,7 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
                     score = -_anomaly_model.score_samples([vector])[0]
                 else:
                     score = 1.0 if prediction == -1 else 0.0
-                
+
                 predictions.append({
                     "text": t[:100] + "..." if len(t) > 100 else t,
                     "is_anomaly": prediction == -1,
@@ -1143,7 +1042,7 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
                     "language": lang,
                     "method": "isolation_forest"
                 })
-                
+
             except Exception as e:
                 logger.error(f"[AnomalyAPI] Error predicting: {e}")
                 predictions.append({
@@ -1152,14 +1051,14 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
                     "anomaly_score": 0.0,
                     "error": str(e)
                 })
-        
+
         return {
             "predictions": predictions,
             "total": len(predictions),
             "anomalies_found": sum(1 for p in predictions if p.get("is_anomaly")),
             "model_status": "loaded"
         }
-        
+
     except Exception as e:
         logger.error(f"[AnomalyAPI] Predict error: {e}", exc_info=True)
         return {"error": str(e), "predictions": []}
@@ -1180,7 +1079,7 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
     try:
         # Get recent feeds
         feeds = storage_manager.get_recent_feeds(limit=100)
-        
+
         if not feeds:
             # No feeds yet - return helpful message
             return {
@@ -1189,29 +1088,29 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
                 "model_status": "no_data",
                 "message": "No feed data available yet. Wait for graph execution to complete."
             }
-        
+
         if not _load_anomaly_components():
             # Use severity + keyword-based scoring as intelligent fallback
             anomalies = []
             anomaly_keywords = ["emergency", "crisis", "breaking", "urgent", "alert", 
                                "warning", "critical", "disaster", "flood", "protest"]
-            
+
             for f in feeds:
                 score = 0.0
                 summary = str(f.get("summary", "")).lower()
                 severity = f.get("severity", "low")
-                
+
                 # Severity-based scoring
                 if severity == "critical": score = 0.9
                 elif severity == "high": score = 0.75
                 elif severity == "medium": score = 0.5
                 else: score = 0.25
-                
+
                 # Keyword boosting
                 keyword_matches = sum(1 for kw in anomaly_keywords if kw in summary)
                 if keyword_matches > 0:
                     score = min(1.0, score + (keyword_matches * 0.1))
-                
+
                 # Only include if above threshold
                 if score >= threshold:
                     anomalies.append({
@@ -1219,10 +1118,10 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
                         "anomaly_score": round(score, 3),
                         "is_anomaly": score >= 0.7
                     })
-            
+
             # Sort by anomaly score
             anomalies.sort(key=lambda x: x.get("anomaly_score", 0), reverse=True)
-            
+
             return {
                 "anomalies": anomalies[:limit],
                 "total": len(anomalies),
@@ -1230,27 +1129,27 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
                 "model_status": "fallback_scoring",
                 "message": "Using severity + keyword scoring. Train ML model for advanced detection."
             }
-        
+
         # ML Model is loaded - use it for scoring
         anomalies = []
         for feed in feeds:
             summary = feed.get("summary", "")
             if not summary:
                 continue
-            
+
             try:
                 lang, _ = _language_detector(summary)
                 vector = _vectorizer.vectorize(summary, lang)
                 prediction = _anomaly_model.predict([vector])[0]
-                
+
                 if hasattr(_anomaly_model, 'decision_function'):
                     score = -_anomaly_model.decision_function([vector])[0]
                 else:
                     score = 1.0 if prediction == -1 else 0.0
-                
+
                 # Normalize score to 0-1 range
                 normalized_score = max(0, min(1, (score + 0.5)))
-                
+
                 if prediction == -1 or normalized_score >= threshold:
                     anomalies.append({
                         **feed,
@@ -1258,24 +1157,24 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
                         "is_anomaly": prediction == -1,
                         "language": lang
                     })
-                    
+
                     if len(anomalies) >= limit:
                         break
-                        
+
             except Exception as e:
                 logger.debug(f"[AnomalyAPI] Error scoring feed: {e}")
                 continue
-        
+
         # Sort by anomaly score
         anomalies.sort(key=lambda x: x.get("anomaly_score", 0), reverse=True)
-        
+
         return {
             "anomalies": anomalies,
             "total": len(anomalies),
             "threshold": threshold,
             "model_status": "ml_active"
         }
-        
+
     except Exception as e:
         logger.error(f"[AnomalyAPI] Get anomalies error: {e}")
         return {"anomalies": [], "total": 0, "error": str(e)}
@@ -1286,16 +1185,16 @@ def get_model_status():
     """Get anomaly detection model status"""
     try:
         from pathlib import Path
-        
+
         output_dir = Path(__file__).parent / "models" / "anomaly-detection" / "output"
         models_found = []
-        
+
         if output_dir.exists():
             for f in output_dir.glob("*.joblib"):
                 models_found.append(f.name)
-        
+
         loaded = _anomaly_model is not None
-        
+
         return {
             "model_loaded": loaded,
             "models_available": models_found,
@@ -1303,7 +1202,7 @@ def get_model_status():
             "batch_threshold": int(os.getenv("BATCH_THRESHOLD", "1000")),
             "output_directory": str(output_dir)
         }
-        
+
     except Exception as e:
         return {"error": str(e), "model_loaded": False}
 
@@ -1368,13 +1267,13 @@ def rag_chat(request: ChatRequest):
                 answer="RAG system not available. Please check server logs.",
                 error="RAG initialization failed"
             )
-        
+
         result = rag.query(
             question=request.message,
             domain_filter=request.domain_filter,
             use_history=request.use_history
         )
-        
+
         return ChatResponse(
             answer=result.get("answer", "No response generated."),
             sources=result.get("sources", []),
@@ -1382,7 +1281,7 @@ def rag_chat(request: ChatRequest):
             docs_found=result.get("docs_found", 0),
             error=result.get("error")
         )
-        
+
     except Exception as e:
         logger.error(f"[RAG API] Chat error: {e}", exc_info=True)
         return ChatResponse(
@@ -1398,11 +1297,11 @@ def rag_stats():
         rag = _get_rag()
         if not rag:
             return {"error": "RAG not available", "status": "offline"}
-        
+
         stats = rag.get_stats()
         stats["status"] = "online"
         return stats
-        
+
     except Exception as e:
         return {"error": str(e), "status": "error"}
 
@@ -1416,7 +1315,7 @@ def rag_clear_history():
             rag.clear_history()
             return {"message": "Chat history cleared", "success": True}
         return {"message": "RAG not available", "success": False}
-        
+
     except Exception as e:
         return {"error": str(e), "success": False}
 
@@ -1476,11 +1375,11 @@ def update_intel_config(config: IntelConfigUpdate):
     """
     try:
         path = _ensure_intel_config()
-        
+
         # Read existing config
         with open(path, "r", encoding="utf-8") as f:
             existing = json.load(f)
-        
+
         # Update with provided values
         if config.user_profiles is not None:
             existing["user_profiles"] = config.user_profiles
@@ -1488,14 +1387,14 @@ def update_intel_config(config: IntelConfigUpdate):
             existing["user_keywords"] = config.user_keywords
         if config.user_products is not None:
             existing["user_products"] = config.user_products
-        
+
         # Save
         with open(path, "w", encoding="utf-8") as f:
             json.dump(existing, f, indent=2)
-        
+
         logger.info(f"[IntelConfig] Updated config: {len(existing.get('user_keywords', []))} keywords, {sum(len(v) for v in existing.get('user_profiles', {}).values())} profiles")
         return {"status": "updated", "config": existing}
-        
+
     except Exception as e:
         logger.error(f"[IntelConfig] Error updating config: {e}")
         return {"status": "error", "error": str(e)}
@@ -1519,9 +1418,9 @@ def add_intel_target(target_type: str, value: str, platform: Optional[str] = Non
         path = _ensure_intel_config()
         with open(path, "r", encoding="utf-8") as f:
             config = json.load(f)
-        
+
         added = False
-        
+
         if target_type == "keyword":
             if value not in config.get("user_keywords", []):
                 config.setdefault("user_keywords", []).append(value)
@@ -1540,14 +1439,14 @@ def add_intel_target(target_type: str, value: str, platform: Optional[str] = Non
                 added = True
         else:
             return {"status": "error", "error": f"Invalid target_type: {target_type}"}
-        
+
         if added:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
             logger.info(f"[IntelConfig] Added {target_type}: {value}")
-        
+
         return {"status": "added" if added else "already_exists", "config": config}
-        
+
     except Exception as e:
         logger.error(f"[IntelConfig] Error adding target: {e}")
         return {"status": "error", "error": str(e)}
@@ -1567,9 +1466,9 @@ def remove_intel_target(target_type: str, value: str, platform: Optional[str] = 
         path = _ensure_intel_config()
         with open(path, "r", encoding="utf-8") as f:
             config = json.load(f)
-        
+
         removed = False
-        
+
         if target_type == "keyword":
             if value in config.get("user_keywords", []):
                 config["user_keywords"].remove(value)
@@ -1586,14 +1485,14 @@ def remove_intel_target(target_type: str, value: str, platform: Optional[str] = 
                 removed = True
         else:
             return {"status": "error", "error": f"Invalid target_type: {target_type}"}
-        
+
         if removed:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2)
             logger.info(f"[IntelConfig] Removed {target_type}: {value}")
-        
+
         return {"status": "removed" if removed else "not_found", "config": config}
-        
+
     except Exception as e:
         logger.error(f"[IntelConfig] Error removing target: {e}")
         return {"status": "error", "error": str(e)}
@@ -1611,19 +1510,19 @@ def get_weather_predictor():
     global _weather_predictor
     if _weather_predictor is not None:
         return _weather_predictor
-    
+
     try:
         import importlib.util
         from pathlib import Path
-        
+
         # Use importlib.util for fully isolated import (avoids package collisions)
         weather_src = Path(__file__).parent / "models" / "weather-prediction" / "src"
         predictor_path = weather_src / "components" / "predictor.py"
-        
+
         if not predictor_path.exists():
             logger.error(f"[WeatherAPI] predictor.py not found at {predictor_path}")
             return None
-        
+
         # First, ensure entity module is loadable
         entity_path = weather_src / "entity" / "config_entity.py"
         if entity_path.exists():
@@ -1634,13 +1533,13 @@ def get_weather_predictor():
             entity_module = importlib.util.module_from_spec(entity_spec)
             sys.modules["weather_config_entity"] = entity_module
             entity_spec.loader.exec_module(entity_module)
-        
+
         # Add weather src to path temporarily for relative imports
-        import sys
+        # sys is already imported at top of file
         weather_src_str = str(weather_src)
         if weather_src_str not in sys.path:
             sys.path.insert(0, weather_src_str)
-        
+
         # Now load predictor module
         spec = importlib.util.spec_from_file_location(
             "weather_predictor_module",
@@ -1648,11 +1547,11 @@ def get_weather_predictor():
         )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
-        
+
         _weather_predictor = module.WeatherPredictor()
         logger.info("[WeatherAPI] ✓ Weather predictor initialized via isolated import")
         return _weather_predictor
-        
+
     except Exception as e:
         logger.error(f"[WeatherAPI] Failed to initialize predictor: {e}")
         import traceback
@@ -1672,24 +1571,24 @@ async def get_weather_predictions():
     - Severity classification
     """
     predictor = get_weather_predictor()
-    
+
     if predictor is None:
         return {
             "status": "unavailable",
             "message": "Weather prediction model not loaded",
             "predictions": None
         }
-    
+
     try:
         # Try to get latest predictions from file
         predictions = predictor.get_latest_predictions()
-        
+
         if predictions is None:
             # Generate new predictions
             logger.info("[WeatherAPI] Generating new predictions...")
             predictions = predictor.predict_all_districts()
             predictor.save_predictions(predictions)
-        
+
         return {
             "status": "success",
             "prediction_date": predictions.get("prediction_date"),
@@ -1706,32 +1605,32 @@ async def get_weather_predictions():
 async def get_district_weather(district: str):
     """Get weather prediction for a specific district."""
     predictor = get_weather_predictor()
-    
+
     if predictor is None:
         return {"status": "unavailable", "message": "Weather predictor not loaded"}
-    
+
     try:
         predictions = predictor.get_latest_predictions()
-        
+
         if predictions is None:
             predictions = predictor.predict_all_districts()
-        
+
         districts = predictions.get("districts", {})
-        
+
         # Case-insensitive lookup
         district_key = None
         for d in districts.keys():
             if d.lower() == district.lower():
                 district_key = d
                 break
-        
+
         if district_key is None:
             return {
                 "status": "not_found",
                 "message": f"District '{district}' not found",
                 "available_districts": list(districts.keys())
             }
-        
+
         return {
             "status": "success",
             "district": district_key,
@@ -1747,13 +1646,13 @@ async def get_weather_model_status():
     """Get weather prediction model status and training info."""
     from pathlib import Path
     import os
-    
+
     models_dir = Path(__file__).parent / "models" / "weather-prediction" / "artifacts" / "models"
     predictions_dir = Path(__file__).parent / "models" / "weather-prediction" / "output" / "predictions"
-    
+
     model_files = list(models_dir.glob("lstm_*.h5")) if models_dir.exists() else []
     prediction_files = list(predictions_dir.glob("predictions_*.json")) if predictions_dir.exists() else []
-    
+
     latest_prediction = None
     if prediction_files:
         latest = max(prediction_files, key=lambda p: p.stat().st_mtime)
@@ -1761,7 +1660,7 @@ async def get_weather_model_status():
             "file": latest.name,
             "modified": datetime.fromtimestamp(latest.stat().st_mtime).isoformat()
         }
-    
+
     return {
         "status": "available" if model_files else "not_trained",
         "models_trained": len(model_files),
@@ -1809,23 +1708,23 @@ async def get_currency_prediction():
     - Volatility classification
     """
     predictor = get_currency_predictor()
-    
+
     if predictor is None:
         return {
             "status": "unavailable",
             "message": "Currency prediction model not loaded"
         }
-    
+
     try:
         # Try to get latest prediction from file
         prediction = predictor.get_latest_prediction()
-        
+
         if prediction is None:
             # Generate fallback
             logger.info("[CurrencyAPI] No prediction found, generating fallback...")
             prediction = predictor.generate_fallback_prediction()
             predictor.save_prediction(prediction)
-        
+
         return {
             "status": "success",
             "prediction": prediction
@@ -1840,20 +1739,20 @@ async def get_currency_history(days: int = 30):
     """Get historical USD/LKR rates."""
     from pathlib import Path
     import pandas as pd
-    
+
     try:
         data_dir = Path(__file__).parent / "models" / "currency-volatility-prediction" / "artifacts" / "data"
         csv_files = list(data_dir.glob("currency_data_*.csv")) if data_dir.exists() else []
-        
+
         if not csv_files:
             return {"status": "no_data", "message": "No currency data available"}
-        
+
         latest = max(csv_files, key=lambda p: p.stat().st_mtime)
         df = pd.read_csv(latest, parse_dates=["date"])
-        
+
         # Get last N days
         df = df.tail(days)
-        
+
         history = []
         for _, row in df.iterrows():
             history.append({
@@ -1863,7 +1762,7 @@ async def get_currency_history(days: int = 30):
                 "low": round(row.get("low", row["close"]), 2),
                 "daily_return_pct": round(row.get("daily_return", 0) * 100, 3)
             })
-        
+
         return {
             "status": "success",
             "days": len(history),
@@ -1877,13 +1776,13 @@ async def get_currency_history(days: int = 30):
 async def get_currency_model_status():
     """Get currency prediction model status."""
     from pathlib import Path
-    
+
     models_dir = Path(__file__).parent / "models" / "currency-volatility-prediction" / "artifacts" / "models"
     predictions_dir = Path(__file__).parent / "models" / "currency-volatility-prediction" / "output" / "predictions"
-    
+
     model_exists = (models_dir / "gru_usd_lkr.h5").exists() if models_dir.exists() else False
     prediction_files = list(predictions_dir.glob("currency_prediction_*.json")) if predictions_dir.exists() else []
-    
+
     latest_prediction = None
     if prediction_files:
         latest = max(prediction_files, key=lambda p: p.stat().st_mtime)
@@ -1891,7 +1790,7 @@ async def get_currency_model_status():
             "file": latest.name,
             "modified": datetime.fromtimestamp(latest.stat().st_mtime).isoformat()
         }
-    
+
     return {
         "status": "available" if model_exists else "not_trained",
         "model_type": "GRU",
@@ -1929,9 +1828,9 @@ def get_stock_predictor():
 @app.get("/api/stocks/predictions")
 async def get_stock_predictions():
     """
-    Get stock price predictions for all CSE stocks.
+    Get stock price predictions for all configured stocks.
     
-    Returns predictions for 10 top Sri Lankan stocks with:
+    Returns predictions for 10 popular stocks with:
     - Current price
     - Predicted next-day price
     - Expected change percentage
@@ -1939,31 +1838,62 @@ async def get_stock_predictions():
     - Model architecture used
     """
     predictor = get_stock_predictor()
-    
+
     if predictor is None:
-        return {
-            "status": "unavailable",
-            "message": "Stock prediction model not loaded"
-        }
-    
-    try:
-        # Try to get latest predictions from file
-        predictions = predictor.get_latest_predictions()
-        
-        if predictions is None:
-            # Generate fallback predictions
-            logger.info("[StockAPI] No predictions found, generating fallback...")
-            from entity.config_entity import SRI_LANKA_STOCKS
+        # Generate fallback even without predictor
+        try:
+            import sys
+            from pathlib import Path
+            stock_path = Path(__file__).parent / "models" / "stock-price-prediction" / "src"
+            sys.path.insert(0, str(stock_path))
+            from constants.training_pipeline import STOCKS_TO_TRAIN
+
+            from datetime import datetime
             predictions = {
                 "prediction_date": (datetime.now()).strftime("%Y-%m-%d"),
                 "generated_at": datetime.now().isoformat(),
-                "stocks": {
-                    code: predictor._generate_fallback_prediction(code)
-                    for code in SRI_LANKA_STOCKS.keys()
-                },
-                "summary": {"total_stocks": len(SRI_LANKA_STOCKS)}
+                "stocks": {},
+                "summary": {"total_stocks": len(STOCKS_TO_TRAIN), "bullish": 0, "bearish": 0, "neutral": 0}
             }
-        
+
+            import numpy as np
+            for code, info in STOCKS_TO_TRAIN.items():
+                np.random.seed(hash(code) % 2**31)
+                change_pct = np.random.normal(0.1, 1.0)
+                trend = "bullish" if change_pct > 0.5 else "bearish" if change_pct < -0.5 else "neutral"
+                predictions["summary"][trend] = predictions["summary"].get(trend, 0) + 1
+                predictions["stocks"][code] = {
+                    "symbol": code,
+                    "name": info.get("name", code),
+                    "sector": info.get("sector", "Unknown"),
+                    "current_price": 100.0,
+                    "predicted_price": 100.0 * (1 + change_pct / 100),
+                    "expected_change_pct": round(change_pct, 3),
+                    "trend": trend,
+                    "trend_emoji": "📈" if trend == "bullish" else "📉" if trend == "bearish" else "➡️",
+                    "confidence": round(np.random.uniform(0.65, 0.85), 2),
+                    "is_fallback": True
+                }
+
+            return {"status": "success", "predictions": predictions}
+        except Exception as e:
+            return {"status": "unavailable", "message": f"Stock prediction model not loaded: {e}"}
+
+    try:
+        # Try to get latest predictions from file
+        predictions = predictor.get_latest_predictions()
+
+        if predictions is None:
+            # Generate fallback predictions
+            logger.info("[StockAPI] No predictions found, generating fallback...")
+            predictions = predictor.predict_all_stocks()
+            predictions = {
+                "prediction_date": (datetime.now()).strftime("%Y-%m-%d"),
+                "generated_at": datetime.now().isoformat(),
+                "stocks": predictions,
+                "summary": {"total_stocks": len(predictions)}
+            }
+
         return {
             "status": "success",
             "predictions": predictions
@@ -1977,13 +1907,13 @@ async def get_stock_predictions():
 async def get_stock_prediction_by_symbol(symbol: str):
     """Get prediction for a specific stock symbol."""
     predictor = get_stock_predictor()
-    
+
     if predictor is None:
         return {"status": "unavailable", "message": "Stock prediction model not loaded"}
-    
+
     try:
         predictions = predictor.get_latest_predictions()
-        
+
         if predictions and symbol.upper() in predictions.get("stocks", {}):
             return {
                 "status": "success",
@@ -2004,20 +1934,20 @@ async def get_stock_model_status():
     """Get stock prediction model status for all stocks."""
     from pathlib import Path
     import json
-    
+
     models_dir = Path(__file__).parent / "models" / "stock-price-prediction" / "artifacts" / "models"
     predictions_dir = Path(__file__).parent / "models" / "stock-price-prediction" / "output" / "predictions"
-    
+
     model_files = list(models_dir.glob("*_model.h5")) if models_dir.exists() else []
     prediction_files = list(predictions_dir.glob("stock_predictions_*.json")) if predictions_dir.exists() else []
-    
+
     # Get training summary
     summary_path = models_dir / "training_summary.json" if models_dir.exists() else None
     training_summary = None
     if summary_path and summary_path.exists():
         with open(summary_path) as f:
             training_summary = json.load(f)
-    
+
     latest_prediction = None
     if prediction_files:
         latest = max(prediction_files, key=lambda p: p.stat().st_mtime)
@@ -2025,7 +1955,7 @@ async def get_stock_model_status():
             "file": latest.name,
             "modified": datetime.fromtimestamp(latest.stat().st_mtime).isoformat()
         }
-    
+
     return {
         "status": "available" if model_files else "not_trained",
         "models_trained": len(model_files),
@@ -2039,7 +1969,7 @@ async def get_stock_model_status():
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    
+
     try:
         # Send initial state
         try:
@@ -2080,5 +2010,5 @@ async def websocket_endpoint(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     import uuid
-    
+
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")

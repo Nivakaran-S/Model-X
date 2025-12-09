@@ -1,0 +1,5 @@
+[ 2025-12-08 08:22:08,772 ] 17 root - INFO - Initiate the data ingestion
+[ 2025-12-08 08:22:11,619 ] 592 yfinance - ERROR - HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: COMB-N000.CM"}}}
+[ 2025-12-08 08:22:12,037 ] 185 yfinance - ERROR - 
+1 Failed download:
+[ 2025-12-08 08:22:12,037 ] 198 yfinance - ERROR - ['COMB-N000.CM']: YFTzMissingError('possibly delisted; no timezone found')

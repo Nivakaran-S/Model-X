@@ -1,0 +1,47 @@
+[ 2025-12-08 11:41:22,953 ] 17 root - INFO - Initiate the data ingestion
+[ 2025-12-08 11:41:25,839 ] 59 root - INFO - Performed train test split on the dataframe
+[ 2025-12-08 11:41:25,839 ] 61 root - INFO - Exited split_data_as_train_test method of Data_Ingestion class
+[ 2025-12-08 11:41:25,841 ] 69 root - INFO - Exporting train and test file path.
+[ 2025-12-08 11:41:25,917 ] 78 root - INFO - Exported train and test file path.
+[ 2025-12-08 11:41:25,918 ] 19 root - INFO - Data Initiation Completed
+[ 2025-12-08 11:41:25,921 ] 24 root - INFO - Initiate the data Validation
+[ 2025-12-08 11:41:26,047 ] 32 root - INFO - Required number of columns:6
+[ 2025-12-08 11:41:26,051 ] 33 root - INFO - Data frame has columns:6
+[ 2025-12-08 11:41:26,051 ] 32 root - INFO - Required number of columns:6
+[ 2025-12-08 11:41:26,051 ] 33 root - INFO - Data frame has columns:6
+[ 2025-12-08 11:41:26,169 ] 26 root - INFO - data Validation Completed
+[ 2025-12-08 11:41:26,169 ] 31 root - INFO - data Transformation started
+[ 2025-12-08 11:41:26,169 ] 50 root - INFO - Entered initiate_data_transformation method of DataTransformation class
+[ 2025-12-08 11:41:26,225 ] 58 root - INFO - Read train and test data completed. Train shape: (3512, 5), Test shape: (880, 5)
+[ 2025-12-08 11:41:26,251 ] 91 root - INFO - Converted index to datetime and sorted
+[ 2025-12-08 11:41:26,252 ] 99 root - INFO - Combined data shape: (4388, 5), Train portion: 3510 rows (80%)
+[ 2025-12-08 11:41:26,253 ] 103 root - INFO - Applying MinMaxScaler on combined data
+[ 2025-12-08 11:41:26,254 ] 111 root - INFO - Creating sequences with time_step=60
+[ 2025-12-08 11:41:26,259 ] 134 root - INFO - Train sequences shape: (3449, 60, 1), Train labels shape: (3449,)
+[ 2025-12-08 11:41:26,260 ] 135 root - INFO - Test sequences shape: (878, 60, 1), Test labels shape: (878,)
+[ 2025-12-08 11:41:26,260 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 11:41:26,266 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 11:41:26,267 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 11:41:26,273 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 11:41:26,273 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 11:41:26,276 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 11:41:26,276 ] 161 root - INFO - Data transformation artifact: DataTransformationArtifact(transformed_object_file_path='Artifacts\\12_08_2025_11_40_53\\data_transformation\\transformed_object\\preprocessing.pkl', transformed_train_file_path='Artifacts\\12_08_2025_11_40_53\\data_transformation\\transformed\\train.npy', transformed_test_file_path='Artifacts\\12_08_2025_11_40_53\\data_transformation\\transformed\\test.npy')
+[ 2025-12-08 11:41:26,278 ] 35 root - INFO - data Transformation completed
+[ 2025-12-08 11:41:26,279 ] 37 root - INFO - Model Training stared
+[ 2025-12-08 11:41:26,279 ] 136 root - INFO - Entered initiate_model_trainer
+[ 2025-12-08 11:41:26,279 ] 141 root - INFO - Loading transformed data from Artifacts\12_08_2025_11_40_53\data_transformation\transformed\train.npy and Artifacts\12_08_2025_11_40_53\data_transformation\transformed\test.npy
+[ 2025-12-08 11:41:26,352 ] 149 root - INFO - Loaded train data shapes: X=(3449, 60, 1), y=(3449,)
+[ 2025-12-08 11:41:26,377 ] 154 root - INFO - Loaded scaler from Artifacts\12_08_2025_11_40_53\data_transformation\transformed_object\preprocessing.pkl
+[ 2025-12-08 11:41:29,499 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-12-08 11:41:31,844 ] 107 dagshub - INFO - Accessing as sliitguy
+[ 2025-12-08 11:41:34,110 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/repos/sliitguy/Model-X "HTTP/1.1 200 OK"
+[ 2025-12-08 11:41:35,745 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-12-08 11:41:35,750 ] 107 dagshub - INFO - Initialized MLflow to track repo "sliitguy/Model-X"
+[ 2025-12-08 11:41:35,752 ] 107 dagshub - INFO - Repository sliitguy/Model-X initialized!
+[ 2025-12-08 11:41:39,226 ] 76 root - INFO - Fitting LSTM model
+[ 2025-12-08 11:43:41,008 ] 94 root - INFO - DEBUG - y_test_actual sample (first 5): [52.1905899  52.27614975 51.16389084 49.02493286 49.02493286]
+[ 2025-12-08 11:43:41,009 ] 95 root - INFO - DEBUG - test_predict sample (first 5): [59.532284 58.884438 58.209557 57.523716 56.819813]
+[ 2025-12-08 11:43:41,010 ] 96 root - INFO - DEBUG - y_test_actual range: min=41.923587799072266, max=197.75
+[ 2025-12-08 11:43:41,010 ] 97 root - INFO - DEBUG - test_predict range: min=43.88778305053711, max=181.4908447265625
+[ 2025-12-08 11:43:41,023 ] 106 root - INFO - Test RMSE: 6.095410323062889, MAE: 4.31799844728787, R2: 0.9769480513966002, MAPE: 0.046969647618396705
+[ 2025-12-08 11:43:47,436 ] 83 absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 

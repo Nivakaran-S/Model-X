@@ -1,0 +1,56 @@
+[ 2025-12-08 12:07:19,406 ] 17 root - INFO - Initiate the data ingestion
+[ 2025-12-08 12:07:19,407 ] 35 root - INFO - Downloading stock data for COMB-N0000.CM from 2000-01-01 00:00:00 to 2025-12-08 12:07:19.407497
+[ 2025-12-08 12:07:29,132 ] 42 root - INFO - Flattened multi-level columns from yfinance
+[ 2025-12-08 12:07:29,142 ] 58 root - INFO - Downloaded and cleaned 4439 rows of stock data
+[ 2025-12-08 12:07:29,142 ] 59 root - INFO - Columns: ['Date', 'Close', 'High', 'Low', 'Open', 'Volume']
+[ 2025-12-08 12:07:29,204 ] 85 root - INFO - Performed train test split on the dataframe
+[ 2025-12-08 12:07:29,205 ] 87 root - INFO - Exited split_data_as_train_test method of Data_Ingestion class
+[ 2025-12-08 12:07:29,206 ] 95 root - INFO - Exporting train and test file path.
+[ 2025-12-08 12:07:29,242 ] 104 root - INFO - Exported train and test file path.
+[ 2025-12-08 12:07:29,242 ] 19 root - INFO - Data Initiation Completed
+[ 2025-12-08 12:07:29,262 ] 24 root - INFO - Initiate the data Validation
+[ 2025-12-08 12:07:29,331 ] 32 root - INFO - Required number of columns:6
+[ 2025-12-08 12:07:29,331 ] 33 root - INFO - Data frame has columns:6
+[ 2025-12-08 12:07:29,331 ] 32 root - INFO - Required number of columns:6
+[ 2025-12-08 12:07:29,331 ] 33 root - INFO - Data frame has columns:6
+[ 2025-12-08 12:07:29,447 ] 26 root - INFO - data Validation Completed
+[ 2025-12-08 12:07:29,447 ] 31 root - INFO - data Transformation started
+[ 2025-12-08 12:07:29,447 ] 50 root - INFO - Entered initiate_data_transformation method of DataTransformation class
+[ 2025-12-08 12:07:29,462 ] 58 root - INFO - Read train and test data completed. Train shape: (3551, 6), Test shape: (888, 6)
+[ 2025-12-08 12:07:29,467 ] 85 root - INFO - Sorted combined data by Date column
+[ 2025-12-08 12:07:29,468 ] 99 root - INFO - Combined data shape: (4439, 6), Train portion: 3551 rows (80%)
+[ 2025-12-08 12:07:29,468 ] 103 root - INFO - Applying MinMaxScaler on combined data
+[ 2025-12-08 12:07:29,469 ] 111 root - INFO - Creating sequences with time_step=60
+[ 2025-12-08 12:07:29,475 ] 134 root - INFO - Train sequences shape: (3490, 60, 1), Train labels shape: (3490,)
+[ 2025-12-08 12:07:29,477 ] 135 root - INFO - Test sequences shape: (888, 60, 1), Test labels shape: (888,)
+[ 2025-12-08 12:07:29,477 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 12:07:29,479 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 12:07:29,479 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 12:07:29,484 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 12:07:29,484 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 12:07:29,491 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 12:07:29,491 ] 161 root - INFO - Data transformation artifact: DataTransformationArtifact(transformed_object_file_path='Artifacts\\12_08_2025_12_06_18\\data_transformation\\transformed_object\\preprocessing.pkl', transformed_train_file_path='Artifacts\\12_08_2025_12_06_18\\data_transformation\\transformed\\train.npy', transformed_test_file_path='Artifacts\\12_08_2025_12_06_18\\data_transformation\\transformed\\test.npy')
+[ 2025-12-08 12:07:29,494 ] 35 root - INFO - data Transformation completed
+[ 2025-12-08 12:07:29,494 ] 37 root - INFO - Model Training stared
+[ 2025-12-08 12:07:29,494 ] 141 root - INFO - Entered initiate_model_trainer
+[ 2025-12-08 12:07:29,494 ] 146 root - INFO - Loading transformed data from Artifacts\12_08_2025_12_06_18\data_transformation\transformed\train.npy and Artifacts\12_08_2025_12_06_18\data_transformation\transformed\test.npy
+[ 2025-12-08 12:07:29,545 ] 154 root - INFO - Loaded train data shapes: X=(3490, 60, 1), y=(3490,)
+[ 2025-12-08 12:07:29,570 ] 159 root - INFO - Loaded scaler from Artifacts\12_08_2025_12_06_18\data_transformation\transformed_object\preprocessing.pkl
+[ 2025-12-08 12:07:31,821 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-12-08 12:07:31,857 ] 107 dagshub - INFO - Accessing as sliitguy
+[ 2025-12-08 12:07:34,305 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/repos/sliitguy/Model-X "HTTP/1.1 200 OK"
+[ 2025-12-08 12:07:35,794 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-12-08 12:07:35,798 ] 107 dagshub - INFO - Initialized MLflow to track repo "sliitguy/Model-X"
+[ 2025-12-08 12:07:35,798 ] 107 dagshub - INFO - Repository sliitguy/Model-X initialized!
+[ 2025-12-08 12:07:39,284 ] 81 root - INFO - Fitting LSTM model
+[ 2025-12-08 12:09:03,526 ] 99 root - INFO - DEBUG - y_test_actual sample (first 5): [45.51704025 45.34592438 45.08924866 44.91813278 44.49034119]
+[ 2025-12-08 12:09:03,528 ] 100 root - INFO - DEBUG - test_predict sample (first 5): [45.55753  45.60672  45.642727 45.66334  45.66678 ]
+[ 2025-12-08 12:09:03,528 ] 101 root - INFO - DEBUG - y_test_actual range: min=41.923587799072266, max=216.75
+[ 2025-12-08 12:09:03,528 ] 102 root - INFO - DEBUG - test_predict range: min=42.949100494384766, max=195.67225646972656
+[ 2025-12-08 12:09:03,533 ] 111 root - INFO - Test RMSE: 7.665062894221834, MAE: 5.279208754633998, R2: 0.9735253335787378, MAPE: 0.04756998035610844
+[ 2025-12-08 12:09:05,536 ] 83 absl - WARNING - You are saving your model as an HDF5 file via `model.save()` or `keras.saving.save_model(model)`. This file format is considered legacy. We recommend using instead the native Keras format, e.g. `model.save('my_model.keras')` or `keras.saving.save_model(model, 'my_model.keras')`. 
+[ 2025-12-08 12:09:09,446 ] 163 root - INFO - Saving trained model
+[ 2025-12-08 12:09:09,448 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 12:09:09,540 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 12:09:09,546 ] 194 root - INFO - Model Trainer Artifact: ModelTrainerArtifact(trained_model_file_path='Artifacts\\12_08_2025_12_06_18\\model_trainer\\trained_model\\model.pkl', train_metric_artifact=None, test_metric_artifact=RegressionMetricArtifact(rmse=np.float64(7.665062894221834), mae=5.279208754633998, r2_score=0.9735253335787378, mape=0.04756998035610844))
+[ 2025-12-08 12:09:09,547 ] 42 root - INFO - Model Training artifact created

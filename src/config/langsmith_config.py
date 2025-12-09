@@ -44,7 +44,7 @@ class LangSmithConfig:
             bool: True if configured successfully, False otherwise.
         """
         if not self.api_key:
-            print("[LangSmith] ⚠️  LANGSMITH_API_KEY not found. Tracing disabled.")
+            print("[LangSmith] WARNING: LANGSMITH_API_KEY not found. Tracing disabled.")
             return False
 
         if self._configured:
@@ -57,7 +57,7 @@ class LangSmithConfig:
         os.environ["LANGCHAIN_ENDPOINT"] = self.endpoint
 
         self._configured = True
-        print(f"[LangSmith] ✓ Tracing enabled for project: {self.project}")
+        print(f"[LangSmith] OK - Tracing enabled for project: {self.project}")
         return True
 
     def disable(self):

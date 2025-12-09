@@ -1,298 +1,147 @@
-"""
-models/stock-price-prediction/src/components/data_ingestion.py
-Data Ingestion for Sri Lanka Stock Price Prediction
-Fetches historical data for top CSE stocks from multiple sources
-"""
+from src.exception.exception import StockPriceException
+from src.logging.logger import logging
+
+from src.entity.config_entity import DataIngestionConfig
+from src.entity.artifact_entity import DataIngestionArtifact
+from src.constants.training_pipeline import SRI_LANKA_STOCKS, DEFAULT_STOCK, AVAILABLE_TEST_STOCKS
 import os
 import sys
-import logging
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-import pandas as pd
 import numpy as np
-import requests
-from io import StringIO
+import pandas as pd
+import pymongo
+from typing import List, Optional, Dict
+from sklearn.model_selection import train_test_split
+from dotenv import load_dotenv
+load_dotenv()
 
-# yfinance for stock data (primary)
-try:
-    import yfinance as yf
-    YFINANCE_AVAILABLE = True
-except ImportError:
-    YFINANCE_AVAILABLE = False
-    print("[WARNING] yfinance not available. Install with: pip install yfinance")
+import yfinance as yf 
+import datetime as dt 
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
-from entity.config_entity import DataIngestionConfig, SRI_LANKA_STOCKS
-
-logger = logging.getLogger("stock_prediction.data_ingestion")
-
-
-class StockDataIngestion:
-    """
-    Ingests historical stock data for top Sri Lankan companies.
-    
-    Data sources:
-    1. Yahoo Finance (primary)
-    2. Fallback to CSE web scraping if Yahoo fails
-    
-    Features generated:
-    - OHLCV data
-    - Technical indicators (SMA, EMA, RSI, MACD, Bollinger)
-    - Volume analysis
-    """
-    
-    def __init__(self, config: Optional[DataIngestionConfig] = None):
-        self.config = config or DataIngestionConfig()
-        os.makedirs(self.config.raw_data_dir, exist_ok=True)
-        
-        # CSE-specific Yahoo Finance symbols may not work, so we have fallbacks
-        self.fallback_symbols = {
-            "JKH": "JKH.CM",
-            "COMB": "COMB.CM",
-            "SAMP": "SAMP.CM",
-            "HNB": "HNB.CM",
-            "DIAL": "DIAL.CM",
-            "CTC": "CTC.CM",
-            "NEST": "NEST.CM",
-            "CARG": "CARG.CM",
-            "HNBA": "HNBA.CM",
-            "CARS": "CARS.CM"
-        }
-    
-    def fetch_stock_data(
-        self,
-        stock_code: str,
-        period: str = "2y"
-    ) -> Optional[pd.DataFrame]:
+class DataIngestion:
+    def __init__(self, data_ingestion_config: DataIngestionConfig, stock_code: str = None):
         """
-        Fetch historical stock data from Yahoo Finance.
+        Initialize DataIngestion with optional stock_code parameter.
         
         Args:
-            stock_code: Internal stock code (e.g., "JKH")
-            period: Data period (1y, 2y, 5y)
+            data_ingestion_config: Pipeline configuration
+            stock_code: Stock code (e.g., 'AAPL', 'COMB', 'JKH'). If None, uses DEFAULT_STOCK.
+        """
+        try:
+            self.data_ingestion_config = data_ingestion_config
+            self.stock_code = stock_code or DEFAULT_STOCK
             
-        Returns:
-            DataFrame with OHLCV data or None if failed
-        """
-        stock_info = self.config.stocks.get(stock_code)
-        if not stock_info:
-            logger.error(f"[STOCK] Unknown stock code: {stock_code}")
-            return None
-        
-        # Try multiple symbol formats
-        symbols_to_try = [
-            stock_info["yahoo_symbol"],
-            self.fallback_symbols.get(stock_code, ""),
-            f"{stock_code}.CM",
-            f"{stock_code}.CO"
-        ]
-        
-        for symbol in symbols_to_try:
-            if not symbol:
-                continue
+            # Get stock info - check test stocks first (globally available), then CSE stocks
+            if self.stock_code in AVAILABLE_TEST_STOCKS:
+                self.stock_info = AVAILABLE_TEST_STOCKS[self.stock_code]
+                self.yahoo_symbol = self.stock_info["yahoo_symbol"]
+            elif self.stock_code in SRI_LANKA_STOCKS:
+                self.stock_info = SRI_LANKA_STOCKS[self.stock_code]
+                self.yahoo_symbol = self.stock_info["yahoo_symbol"]
+            else:
+                # Fallback - use stock_code directly as Yahoo symbol
+                self.yahoo_symbol = self.stock_code
+                self.stock_info = {"name": self.stock_code, "sector": "Unknown"}
             
-            try:
-                logger.info(f"[STOCK] Trying {stock_code} with symbol {symbol}...")
-                ticker = yf.Ticker(symbol)
-                df = ticker.history(period=period, interval="1d")
-                
-                if not df.empty and len(df) > 30:  # Need at least 30 days
-                    logger.info(f"[STOCK] ✓ {stock_code}: {len(df)} records")
-                    
-                    df = df.reset_index()
-                    df.columns = [c.lower().replace(" ", "_") for c in df.columns]
-                    df["stock_code"] = stock_code
-                    df["symbol"] = symbol
-                    
-                    return df
-            except Exception as e:
-                logger.warning(f"[STOCK] Failed with {symbol}: {e}")
-                continue
+            logging.info(f"DataIngestion initialized for stock: {self.stock_code} ({self.yahoo_symbol})")
+        except Exception as e:
+            raise StockPriceException(e, sys)
         
-        # If all Yahoo symbols fail, try generating synthetic data for demo
-        logger.warning(f"[STOCK] No Yahoo data for {stock_code}, generating demo data")
-        return self._generate_demo_data(stock_code, period)
-    
-    def _generate_demo_data(self, stock_code: str, period: str) -> pd.DataFrame:
+    def export_collection_as_dataframe(self) -> pd.DataFrame:
         """
-        Generate demo stock data for testing when real data unavailable.
-        Based on typical CSE stock characteristics.
-        """
-        days = {"1y": 252, "2y": 504, "5y": 1260}.get(period, 504)
-        
-        # Base price for different stocks (approximate)
-        base_prices = {
-            "JKH": 180, "COMB": 95, "SAMP": 75, "HNB": 210,
-            "DIAL": 12, "CTC": 1200, "NEST": 1800, "CARG": 350,
-            "HNBA": 28, "CARS": 550
-        }
-        
-        base_price = base_prices.get(stock_code, 100)
-        
-        dates = pd.date_range(end=datetime.now(), periods=days, freq='B')  # Business days
-        
-        # Random walk with drift
-        np.random.seed(hash(stock_code) % 2**32)
-        returns = np.random.normal(0.0003, 0.02, days)  # Slight positive drift
-        prices = base_price * np.cumprod(1 + returns)
-        
-        df = pd.DataFrame({
-            "date": dates,
-            "open": prices * (1 + np.random.uniform(-0.01, 0.01, days)),
-            "high": prices * (1 + np.random.uniform(0, 0.02, days)),
-            "low": prices * (1 - np.random.uniform(0, 0.02, days)),
-            "close": prices,
-            "volume": np.random.randint(10000, 500000, days),
-            "stock_code": stock_code,
-            "symbol": f"{stock_code}.CM",
-            "is_demo": True
-        })
-        
-        logger.info(f"[STOCK] ✓ {stock_code}: {len(df)} demo records generated")
-        return df
-    
-    def add_technical_indicators(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Add technical analysis features for ML training.
-        """
-        df = df.copy()
-        
-        # Price-based features
-        df["daily_return"] = df["close"].pct_change()
-        df["daily_range"] = (df["high"] - df["low"]) / df["close"]
-        df["gap"] = (df["open"] - df["close"].shift(1)) / df["close"].shift(1)
-        
-        # Moving averages
-        for period in [5, 10, 20, 50]:
-            df[f"sma_{period}"] = df["close"].rolling(window=period).mean()
-            df[f"ema_{period}"] = df["close"].ewm(span=period).mean()
-        
-        # Price relative to MAs
-        df["price_to_sma20"] = df["close"] / df["sma_20"]
-        df["price_to_sma50"] = df["close"] / df["sma_50"]
-        
-        # Volatility
-        df["volatility_5"] = df["daily_return"].rolling(window=5).std()
-        df["volatility_20"] = df["daily_return"].rolling(window=20).std()
-        
-        # Momentum
-        df["momentum_5"] = df["close"] / df["close"].shift(5) - 1
-        df["momentum_10"] = df["close"] / df["close"].shift(10) - 1
-        df["momentum_20"] = df["close"] / df["close"].shift(20) - 1
-        
-        # RSI (14-day)
-        delta = df["close"].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / (loss + 1e-10)
-        df["rsi_14"] = 100 - (100 / (1 + rs))
-        
-        # MACD
-        ema_12 = df["close"].ewm(span=12).mean()
-        ema_26 = df["close"].ewm(span=26).mean()
-        df["macd"] = ema_12 - ema_26
-        df["macd_signal"] = df["macd"].ewm(span=9).mean()
-        df["macd_hist"] = df["macd"] - df["macd_signal"]
-        
-        # Bollinger Bands
-        df["bb_middle"] = df["close"].rolling(window=20).mean()
-        bb_std = df["close"].rolling(window=20).std()
-        df["bb_upper"] = df["bb_middle"] + 2 * bb_std
-        df["bb_lower"] = df["bb_middle"] - 2 * bb_std
-        df["bb_position"] = (df["close"] - df["bb_lower"]) / (df["bb_upper"] - df["bb_lower"] + 1e-10)
-        df["bb_width"] = (df["bb_upper"] - df["bb_lower"]) / df["bb_middle"]
-        
-        # Volume features
-        df["volume_sma_20"] = df["volume"].rolling(window=20).mean()
-        df["volume_ratio"] = df["volume"] / (df["volume_sma_20"] + 1)
-        
-        # Temporal features
-        df["day_of_week"] = pd.to_datetime(df["date"]).dt.dayofweek
-        df["day_sin"] = np.sin(2 * np.pi * df["day_of_week"] / 5)
-        df["day_cos"] = np.cos(2 * np.pi * df["day_of_week"] / 5)
-        
-        df["month"] = pd.to_datetime(df["date"]).dt.month
-        df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
-        df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
-        
-        return df
-    
-    def ingest_all_stocks(self) -> Dict[str, str]:
-        """
-        Ingest data for all configured stocks.
+        Download stock data from Yahoo Finance for the configured stock.
         
         Returns:
-            Dictionary mapping stock code to saved file path
+            DataFrame with OHLCV data
         """
-        logger.info(f"[INGESTION] Starting data ingestion for {len(self.config.stocks)} stocks...")
+        try:
+            start = dt.datetime(2000, 1, 1)
+            end = dt.datetime.now()
+            
+            logging.info(f"Downloading {self.stock_code} ({self.yahoo_symbol}) from {start.date()} to {end.date()}")
+            df = yf.download(self.yahoo_symbol, start=start, end=end, auto_adjust=True)
+            
+            # Handle multi-level columns (yfinance returns MultiIndex when downloading single stock)
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+                logging.info("Flattened multi-level columns from yfinance")
+            
+            # Validate data is not empty
+            if df.empty:
+                raise Exception(f"No data returned from yfinance for {self.stock_code} ({self.yahoo_symbol}). Check ticker symbol.")
+            
+            # Reset index to make Date a column
+            df = df.reset_index()
+            
+            # Ensure Date column is properly formatted
+            if 'Date' in df.columns:
+                df['Date'] = pd.to_datetime(df['Date']).dt.strftime('%Y-%m-%d')
+            
+            # Remove any rows with non-numeric Close values
+            df = df[pd.to_numeric(df['Close'], errors='coerce').notna()]
+            
+            # Add stock metadata columns
+            df['StockCode'] = self.stock_code
+            df['StockName'] = self.stock_info.get("name", self.stock_code)
+            
+            logging.info(f"✓ Downloaded {len(df)} rows for {self.stock_code}")
+            
+            df.replace({"na": np.nan}, inplace=True)
+            return df
+        except Exception as e:
+            raise StockPriceException(e, sys)
         
-        results = {}
+    def export_data_into_feature_store(self,dataframe: pd.DataFrame):
+        try:
+            feature_store_file_path=self.data_ingestion_config.feature_store_file_path
+            #creating folder
+            dir_path = os.path.dirname(feature_store_file_path)
+            os.makedirs(dir_path,exist_ok=True)
+            dataframe.to_csv(feature_store_file_path, index=False, header=True)  # Date is now a column
+            return dataframe
+            
+        except Exception as e:
+            raise StockPriceException(e,sys)
         
-        for stock_code, stock_info in self.config.stocks.items():
-            logger.info(f"\n[INGESTION] Processing {stock_code} - {stock_info['name']}...")
-            
-            # Fetch raw data
-            df = self.fetch_stock_data(stock_code, self.config.history_period)
-            
-            if df is None or df.empty:
-                logger.error(f"[INGESTION] ✗ Failed to get data for {stock_code}")
-                continue
-            
-            # Add technical indicators
-            if self.config.include_technical_indicators:
-                df = self.add_technical_indicators(df)
-            
-            # Drop NaN rows from indicator calculations
-            df = df.dropna().reset_index(drop=True)
-            
-            # Save to CSV
-            save_path = os.path.join(
-                self.config.raw_data_dir,
-                f"{stock_code}_data.csv"
+    def split_data_as_train_test(self,dataframe: pd.DataFrame):
+        try:
+            train_set, test_set = train_test_split(
+                dataframe, test_size=self.data_ingestion_config.train_test_split_ratio,
+                shuffle=False  # CRITICAL: Don't shuffle for time series data!
             )
-            df.to_csv(save_path, index=False)
+            logging.info("Performed train test split on the dataframe")
+
+            logging.info(
+                "Exited split_data_as_train_test method of Data_Ingestion class"
+            )
             
-            results[stock_code] = save_path
-            logger.info(f"[INGESTION] ✓ {stock_code}: {len(df)} records saved to {save_path}")
-        
-        logger.info(f"\n[INGESTION] Complete! Processed {len(results)}/{len(self.config.stocks)} stocks")
-        return results
-    
-    def load_stock_data(self, stock_code: str) -> Optional[pd.DataFrame]:
-        """Load existing stock data."""
-        path = os.path.join(self.config.raw_data_dir, f"{stock_code}_data.csv")
-        
-        if os.path.exists(path):
-            return pd.read_csv(path, parse_dates=["date"])
-        return None
-    
-    def get_all_available_stocks(self) -> List[str]:
-        """Get list of stocks with available data."""
-        data_dir = Path(self.config.raw_data_dir)
-        if not data_dir.exists():
-            return []
-        
-        available = []
-        for f in data_dir.glob("*_data.csv"):
-            stock_code = f.stem.replace("_data", "")
-            available.append(stock_code)
-        
-        return available
+            dir_path = os.path.dirname(self.data_ingestion_config.training_file_path)
+            
+            os.makedirs(dir_path, exist_ok=True)
+            
+            logging.info(f"Exporting train and test file path.")
+            
+            train_set.to_csv(
+                self.data_ingestion_config.training_file_path, index=False, header=True  # Date is now a column
+            )
 
+            test_set.to_csv(
+                self.data_ingestion_config.testing_file_path, index=False, header=True  # Date is now a column
+            )
+            logging.info(f"Exported train and test file path.")
 
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    
-    # Test ingestion
-    ingestion = StockDataIngestion()
-    
-    print("Testing stock data ingestion...")
-    results = ingestion.ingest_all_stocks()
-    
-    print(f"\nResults: {len(results)} stocks ingested")
-    for stock, path in results.items():
-        df = ingestion.load_stock_data(stock)
-        if df is not None:
-            print(f"  {stock}: {len(df)} records, latest close: {df['close'].iloc[-1]:.2f}")
+            
+        except Exception as e:
+            raise StockPriceException(e,sys)
+        
+        
+    def initiate_data_ingestion(self):
+        try:
+            dataframe=self.export_collection_as_dataframe()
+            dataframe=self.export_data_into_feature_store(dataframe)
+            self.split_data_as_train_test(dataframe)
+            dataingestionartifact=DataIngestionArtifact(trained_file_path=self.data_ingestion_config.training_file_path,
+                                                        test_file_path=self.data_ingestion_config.testing_file_path)
+            return dataingestionartifact
+
+        except Exception as e:
+            raise StockPriceException(e, sys)

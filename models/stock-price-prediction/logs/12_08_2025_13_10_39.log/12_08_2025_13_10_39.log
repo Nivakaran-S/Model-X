@@ -1,0 +1,45 @@
+[ 2025-12-08 13:12:35,253 ] 17 root - INFO - Initiate the data ingestion
+[ 2025-12-08 13:12:35,255 ] 35 root - INFO - Downloading stock data for COMB-N0000.CM from 2000-01-01 00:00:00 to 2025-12-08 13:12:35.253282
+[ 2025-12-08 13:12:38,990 ] 42 root - INFO - Flattened multi-level columns from yfinance
+[ 2025-12-08 13:12:39,064 ] 58 root - INFO - Downloaded and cleaned 4439 rows of stock data
+[ 2025-12-08 13:12:39,064 ] 59 root - INFO - Columns: ['Date', 'Close', 'High', 'Low', 'Open', 'Volume']
+[ 2025-12-08 13:12:39,556 ] 85 root - INFO - Performed train test split on the dataframe
+[ 2025-12-08 13:12:39,557 ] 87 root - INFO - Exited split_data_as_train_test method of Data_Ingestion class
+[ 2025-12-08 13:12:39,558 ] 95 root - INFO - Exporting train and test file path.
+[ 2025-12-08 13:12:39,773 ] 104 root - INFO - Exported train and test file path.
+[ 2025-12-08 13:12:39,774 ] 19 root - INFO - Data Initiation Completed
+[ 2025-12-08 13:12:39,872 ] 24 root - INFO - Initiate the data Validation
+[ 2025-12-08 13:12:41,963 ] 32 root - INFO - Required number of columns:6
+[ 2025-12-08 13:12:41,964 ] 33 root - INFO - Data frame has columns:6
+[ 2025-12-08 13:12:41,964 ] 32 root - INFO - Required number of columns:6
+[ 2025-12-08 13:12:41,964 ] 33 root - INFO - Data frame has columns:6
+[ 2025-12-08 13:12:43,049 ] 26 root - INFO - data Validation Completed
+[ 2025-12-08 13:12:43,049 ] 31 root - INFO - data Transformation started
+[ 2025-12-08 13:12:43,051 ] 50 root - INFO - Entered initiate_data_transformation method of DataTransformation class
+[ 2025-12-08 13:12:43,111 ] 58 root - INFO - Read train and test data completed. Train shape: (3551, 6), Test shape: (888, 6)
+[ 2025-12-08 13:12:43,207 ] 85 root - INFO - Sorted combined data by Date column
+[ 2025-12-08 13:12:43,207 ] 99 root - INFO - Combined data shape: (4439, 6), Train portion: 3551 rows (80%)
+[ 2025-12-08 13:12:43,210 ] 103 root - INFO - Applying MinMaxScaler on combined data
+[ 2025-12-08 13:12:43,213 ] 111 root - INFO - Creating sequences with time_step=60
+[ 2025-12-08 13:12:43,281 ] 134 root - INFO - Train sequences shape: (3490, 60, 1), Train labels shape: (3490,)
+[ 2025-12-08 13:12:43,291 ] 135 root - INFO - Test sequences shape: (888, 60, 1), Test labels shape: (888,)
+[ 2025-12-08 13:12:43,295 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 13:12:43,314 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 13:12:43,314 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 13:12:43,324 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 13:12:43,324 ] 46 root - INFO - Entered the save_object method of MainUtils class
+[ 2025-12-08 13:12:43,328 ] 50 root - INFO - Exited the save_object method of MainUtils class
+[ 2025-12-08 13:12:43,328 ] 161 root - INFO - Data transformation artifact: DataTransformationArtifact(transformed_object_file_path='Artifacts\\12_08_2025_13_10_42\\data_transformation\\transformed_object\\preprocessing.pkl', transformed_train_file_path='Artifacts\\12_08_2025_13_10_42\\data_transformation\\transformed\\train.npy', transformed_test_file_path='Artifacts\\12_08_2025_13_10_42\\data_transformation\\transformed\\test.npy')
+[ 2025-12-08 13:12:43,331 ] 35 root - INFO - data Transformation completed
+[ 2025-12-08 13:12:43,331 ] 37 root - INFO - Model Training stared
+[ 2025-12-08 13:12:43,331 ] 166 root - INFO - Entered initiate_model_trainer
+[ 2025-12-08 13:12:43,331 ] 171 root - INFO - Loading transformed data from Artifacts\12_08_2025_13_10_42\data_transformation\transformed\train.npy and Artifacts\12_08_2025_13_10_42\data_transformation\transformed\test.npy
+[ 2025-12-08 13:12:43,605 ] 179 root - INFO - Loaded train data shapes: X=(3490, 60, 1), y=(3490,)
+[ 2025-12-08 13:12:43,819 ] 184 root - INFO - Loaded scaler from Artifacts\12_08_2025_13_10_42\data_transformation\transformed_object\preprocessing.pkl
+[ 2025-12-08 13:12:54,827 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-12-08 13:12:54,839 ] 107 dagshub - INFO - Accessing as sliitguy
+[ 2025-12-08 13:13:02,305 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/repos/sliitguy/Model-X "HTTP/1.1 200 OK"
+[ 2025-12-08 13:13:07,319 ] 1025 httpx - INFO - HTTP Request: GET https://dagshub.com/api/v1/user "HTTP/1.1 200 OK"
+[ 2025-12-08 13:13:07,324 ] 107 dagshub - INFO - Initialized MLflow to track repo "sliitguy/Model-X"
+[ 2025-12-08 13:13:07,324 ] 107 dagshub - INFO - Repository sliitguy/Model-X initialized!
+[ 2025-12-08 13:13:24,017 ] 105 root - INFO - Fitting Bidirectional LSTM model with callbacks

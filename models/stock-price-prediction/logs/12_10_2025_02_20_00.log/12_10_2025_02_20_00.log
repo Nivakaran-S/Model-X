@@ -1,0 +1,7 @@
+[ 2025-12-10 02:20:12,417 ] 42 root - INFO - DataIngestion initialized for stock: COMB (COMB.N0000)
+[ 2025-12-10 02:20:12,418 ] 17 root - INFO - Initiate the data ingestion
+[ 2025-12-10 02:20:12,418 ] 57 root - INFO - Downloading COMB (COMB.N0000) from 2000-01-01 to 2025-12-10
+[ 2025-12-10 02:20:14,417 ] 185 yfinance - ERROR - 
+1 Failed download:
+[ 2025-12-10 02:20:14,417 ] 198 yfinance - ERROR - ['COMB.N0000']: YFTzMissingError('possibly delisted; no timezone found')
+[ 2025-12-10 02:20:14,422 ] 63 root - INFO - Flattened multi-level columns from yfinance

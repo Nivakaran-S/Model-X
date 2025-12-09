@@ -1,192 +1,153 @@
 """
-models/stock-price-prediction/main.py
-Entry point for Stock Price Prediction Pipeline
-Can run data collection, training, or prediction independently
+Stock Price Prediction Pipeline - Multi-Stock Training
+Trains separate LSTM models for each stock in STOCKS_TO_TRAIN
 """
-import os
+from src.components.data_ingestion import DataIngestion
+from src.components.data_validation import DataValidation
+from src.components.data_transformation import DataTransformation
+from src.components.model_trainer import ModelTrainer
+from src.exception.exception import StockPriceException
+from src.logging.logger import logging
+from src.entity.config_entity import (
+    DataIngestionConfig, DataValidationConfig, 
+    DataTransformationConfig, ModelTrainerConfig, TrainingPipelineConfig
+)
+from src.constants.training_pipeline import STOCKS_TO_TRAIN
+
 import sys
-import logging  # Import standard library BEFORE path manipulation
-import argparse
-from pathlib import Path
+import os
 from datetime import datetime
 
-# CRITICAL: Configure logging BEFORE adding src/ to path
-# (src/logging/ directory would otherwise shadow the standard module)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("stock_prediction")
 
-# Setup paths - AFTER logging is configured
-PIPELINE_ROOT = Path(__file__).parent
-sys.path.insert(0, str(PIPELINE_ROOT / "src"))
+def train_single_stock(stock_code: str, training_pipeline_config: TrainingPipelineConfig) -> dict:
+    """
+    Train a model for a single stock.
+    
+    Args:
+        stock_code: Stock ticker symbol (e.g., 'AAPL', 'GOOGL')
+        training_pipeline_config: Pipeline configuration
+        
+    Returns:
+        dict with training results or error info
+    """
+    result = {"stock": stock_code, "status": "failed"}
+    
+    try:
+        logging.info(f"\n{'='*60}")
+        logging.info(f"Training model for: {stock_code}")
+        logging.info(f"{'='*60}")
+        
+        # Data Ingestion
+        data_ingestion_config = DataIngestionConfig(training_pipeline_config)
+        data_ingestion = DataIngestion(data_ingestion_config, stock_code=stock_code)
+        logging.info(f"[{stock_code}] Starting data ingestion...")
+        data_ingestion_artifact = data_ingestion.initiate_data_ingestion()
+        logging.info(f"[{stock_code}] ✓ Data ingestion completed")
+        
+        # Data Validation
+        data_validation_config = DataValidationConfig(training_pipeline_config)
+        data_validation = DataValidation(data_ingestion_artifact, data_validation_config)
+        logging.info(f"[{stock_code}] Starting data validation...")
+        data_validation_artifact = data_validation.initiate_data_validation()
+        logging.info(f"[{stock_code}] ✓ Data validation completed")
+        
+        # Data Transformation
+        data_transformation_config = DataTransformationConfig(training_pipeline_config)
+        data_transformation = DataTransformation(data_validation_artifact, data_transformation_config)
+        logging.info(f"[{stock_code}] Starting data transformation...")
+        data_transformation_artifact = data_transformation.initiate_data_transformation()
+        logging.info(f"[{stock_code}] ✓ Data transformation completed")
+        
+        # Model Training
+        model_trainer_config = ModelTrainerConfig(training_pipeline_config)
+        model_trainer = ModelTrainer(
+            model_trainer_config=model_trainer_config,
+            data_transformation_artifact=data_transformation_artifact
+        )
+        logging.info(f"[{stock_code}] Starting model training...")
+        model_trainer_artifact = model_trainer.initiate_model_trainer()
+        logging.info(f"[{stock_code}] ✓ Model training completed")
+        
+        result = {
+            "stock": stock_code,
+            "status": "success",
+            "model_path": model_trainer_artifact.trained_model_file_path,
+            "test_metric": str(model_trainer_artifact.test_metric_artifact)
+        }
+        
+        logging.info(f"[{stock_code}] ✓ Pipeline completed successfully!")
+        
+    except Exception as e:
+        logging.error(f"[{stock_code}] ✗ Pipeline failed: {str(e)}")
+        result = {
+            "stock": stock_code,
+            "status": "failed",
+            "error": str(e)
+        }
+    
+    return result
 
 
-def run_data_ingestion():
-    """Run data ingestion for all stocks."""
-    from components.data_ingestion import StockDataIngestion
-    from entity.config_entity import DataIngestionConfig
+def train_all_stocks():
+    """
+    Train models for all stocks in STOCKS_TO_TRAIN.
+    Each stock gets its own model saved separately.
+    """
+    logging.info("\n" + "="*70)
+    logging.info("STOCK PRICE PREDICTION - MULTI-STOCK TRAINING PIPELINE")
+    logging.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info(f"Stocks to train: {list(STOCKS_TO_TRAIN.keys())}")
+    logging.info("="*70 + "\n")
     
-    logger.info("Starting stock data ingestion...")
+    results = []
+    successful = 0
+    failed = 0
     
-    config = DataIngestionConfig(history_period="2y")
-    ingestion = StockDataIngestion(config)
+    for stock_code in STOCKS_TO_TRAIN.keys():
+        # Create a new pipeline config for each stock (separate artifact directories)
+        training_pipeline_config = TrainingPipelineConfig()
+        
+        result = train_single_stock(stock_code, training_pipeline_config)
+        results.append(result)
+        
+        if result["status"] == "success":
+            successful += 1
+        else:
+            failed += 1
     
-    results = ingestion.ingest_all_stocks()
+    # Print summary
+    logging.info("\n" + "="*70)
+    logging.info("TRAINING SUMMARY")
+    logging.info("="*70)
+    logging.info(f"Total stocks: {len(STOCKS_TO_TRAIN)}")
+    logging.info(f"Successful: {successful}")
+    logging.info(f"Failed: {failed}")
+    logging.info("-"*70)
     
-    logger.info(f"\nData Ingestion Complete!")
-    logger.info(f"Stocks ingested: {len(results)}")
+    for result in results:
+        if result["status"] == "success":
+            logging.info(f"  ✓ {result['stock']}: {result['model_path']}")
+        else:
+            logging.info(f"  ✗ {result['stock']}: {result.get('error', 'Unknown error')[:50]}")
     
-    for stock, path in results.items():
-        df = ingestion.load_stock_data(stock)
-        if df is not None:
-            logger.info(f"  {stock}: {len(df)} records, latest: {df['close'].iloc[-1]:.2f}")
+    logging.info("="*70)
+    logging.info(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info("="*70 + "\n")
     
     return results
 
 
-def run_training(use_optuna: bool = True, stock: str = None):
-    """Run model training."""
-    from components.model_trainer import StockModelTrainer
-    from components.data_ingestion import StockDataIngestion
-    from entity.config_entity import ModelTrainerConfig
-    
-    logger.info("Starting model training...")
-    
-    config = ModelTrainerConfig()
-    trainer = StockModelTrainer(config)
-    
-    ingestion = StockDataIngestion()
-    data_dir = ingestion.config.raw_data_dir
-    
-    if stock:
-        # Train single stock
-        df = ingestion.load_stock_data(stock)
-        if df is None:
-            logger.error(f"No data found for {stock}")
-            return None
-        
-        result = trainer.train_stock(
-            df=df,
-            stock_code=stock,
-            use_optuna=use_optuna,
-            use_mlflow=True
-        )
-        return {stock: result}
-    else:
+if __name__ == '__main__':
+    try:
         # Train all stocks
-        results = trainer.train_all_stocks(
-            data_dir=data_dir,
-            use_optuna=use_optuna,
-            use_mlflow=True
-        )
-        return results
-
-
-def run_prediction():
-    """Run prediction for all stocks."""
-    from components.predictor import StockPredictor
-    from components.data_ingestion import StockDataIngestion
-    
-    logger.info("Generating predictions...")
-    
-    predictor = StockPredictor()
-    ingestion = StockDataIngestion()
-    data_dir = ingestion.config.raw_data_dir
-    
-    predictions = predictor.predict_all_stocks(data_dir)
-    
-    if not predictions:
-        logger.warning("No predictions generated")
-        return None
-    
-    output_path = predictor.save_predictions(predictions)
-    
-    # Display summary
-    logger.info(f"\n{'='*60}")
-    logger.info(f"STOCK PREDICTIONS FOR {list(predictions.values())[0]['prediction_date']}")
-    logger.info(f"{'='*60}")
-    
-    for stock_code, pred in sorted(predictions.items()):
-        emoji = pred.get("trend_emoji", "?")
-        change = pred.get("expected_change_pct", 0)
-        current = pred.get("current_price", 0)
-        predicted = pred.get("predicted_price", 0)
-        arch = pred.get("model_architecture", "?")
+        results = train_all_stocks()
         
-        logger.info(
-            f"  {stock_code:6} {emoji} {change:+6.2f}% | "
-            f"Current: {current:8.2f} → Predicted: {predicted:8.2f} | {arch}"
-        )
-    
-    bullish = sum(1 for p in predictions.values() if "bullish" in p.get("trend", ""))
-    bearish = sum(1 for p in predictions.values() if "bearish" in p.get("trend", ""))
-    
-    logger.info(f"{'='*60}")
-    logger.info(f"Summary: {bullish} bullish, {bearish} bearish, {len(predictions)-bullish-bearish} neutral")
-    logger.info(f"Saved to: {output_path}")
-    
-    return predictions
-
-
-def run_full_pipeline(use_optuna: bool = True):
-    """Run the complete pipeline: ingest → train → predict."""
-    logger.info("=" * 60)
-    logger.info("STOCK PREDICTION PIPELINE - FULL RUN")
-    logger.info("=" * 60)
-    
-    # Step 1: Data Ingestion
-    try:
-        run_data_ingestion()
+        # Exit with error code if any failures
+        failed_count = sum(1 for r in results if r["status"] == "failed")
+        if failed_count > 0:
+            logging.warning(f"{failed_count} stocks failed to train")
+            sys.exit(1)
+        
     except Exception as e:
-        logger.error(f"Data ingestion failed: {e}")
-        return None
-    
-    # Step 2: Training
-    try:
-        run_training(use_optuna=use_optuna)
-    except Exception as e:
-        logger.error(f"Training failed: {e}")
-    
-    # Step 3: Prediction
-    predictions = run_prediction()
-    
-    logger.info("=" * 60)
-    logger.info("PIPELINE COMPLETE!")
-    logger.info("=" * 60)
-    
-    return predictions
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Stock Price Prediction Pipeline")
-    parser.add_argument(
-        "--mode",
-        choices=["ingest", "train", "predict", "full"],
-        default="predict",
-        help="Pipeline mode to run"
-    )
-    parser.add_argument(
-        "--stock",
-        type=str,
-        default=None,
-        help="Specific stock to train (e.g., JKH, COMB)"
-    )
-    parser.add_argument(
-        "--no-optuna",
-        action="store_true",
-        help="Disable Optuna optimization"
-    )
-    
-    args = parser.parse_args()
-    use_optuna = not args.no_optuna
-    
-    if args.mode == "ingest":
-        run_data_ingestion()
-    elif args.mode == "train":
-        run_training(use_optuna=use_optuna, stock=args.stock)
-    elif args.mode == "predict":
-        run_prediction()
-    elif args.mode == "full":
-        run_full_pipeline(use_optuna=use_optuna)
+        logging.error(f"Pipeline crashed: {e}")
+        raise StockPriceException(e, sys)

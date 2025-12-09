@@ -11,5 +11,9 @@ dagshub
 fastapi
 uvicorn
 python-multipart
+yfinance
+tensorflow
+streamlit
+plotly
 
 #-e .

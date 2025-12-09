@@ -1,0 +1,15 @@
+Close:
+  drift_status: false
+  p_value: 0.18669976327523571
+High:
+  drift_status: false
+  p_value: 0.2028018651421293
+Low:
+  drift_status: false
+  p_value: 0.11960573400889289
+Open:
+  drift_status: false
+  p_value: 0.1871536673947823
+Volume:
+  drift_status: false
+  p_value: 0.9895069092071593

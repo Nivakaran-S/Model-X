@@ -1,7 +1,7 @@
 import sys
 from src.logging import logger
 
-class NetworkSecurityException(Exception):
+class StockPriceException(Exception):
     def __init__(self,error_message,error_details:sys):
         self.error_message = error_message
         _,_,exc_tb = error_details.exc_info()
@@ -19,4 +19,4 @@ if __name__=='__main__':
         a=1/0
         print("This will not be printed",a)
     except Exception as e:
-           raise NetworkSecurityException(e,sys)
+           raise StockPriceException(e,sys)

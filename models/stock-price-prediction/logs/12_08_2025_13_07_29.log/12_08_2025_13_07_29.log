@@ -1,0 +1,6 @@
+[ 2025-12-08 13:09:50,189 ] 17 root - INFO - Initiate the data ingestion
+[ 2025-12-08 13:09:50,191 ] 35 root - INFO - Downloading stock data for COMB-N0000.CM from 2000-01-01 00:00:00 to 2025-12-08 13:09:50.189593
+[ 2025-12-08 13:10:11,395 ] 185 yfinance - ERROR - 
+1 Failed download:
+[ 2025-12-08 13:10:11,395 ] 198 yfinance - ERROR - ['COMB-N0000.CM']: Timeout('Failed to perform, curl: (28) Operation timed out after 10026 milliseconds with 14295 bytes received. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')
+[ 2025-12-08 13:10:11,461 ] 42 root - INFO - Flattened multi-level columns from yfinance
