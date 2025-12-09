@@ -190,29 +190,43 @@ const DashboardOverview = () => {
         </div>
       </Card>
 
-      {/* Operational Risk Radar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6 bg-card border-border">
-          <Cloud className="w-8 h-8 text-warning mb-3" />
-          <p className="text-2xl font-bold">{Math.round(dashboard.logistics_friction * 100)}%</p>
-          <p className="text-xs text-muted-foreground uppercase">Logistics Friction</p>
-        </Card>
-        <Card className="p-6 bg-card border-border">
-          <AlertTriangle className="w-8 h-8 text-destructive mb-3" />
-          <p className="text-2xl font-bold">{Math.round(dashboard.compliance_volatility * 100)}%</p>
-          <p className="text-xs text-muted-foreground uppercase">Compliance Volatility</p>
-        </Card>
-        <Card className="p-6 bg-card border-border">
-          <TrendingUp className="w-8 h-8 text-info mb-3" />
-          <p className="text-2xl font-bold">{Math.round(dashboard.market_instability * 100)}%</p>
-          <p className="text-xs text-muted-foreground uppercase">Market Instability</p>
-        </Card>
-        <Card className="p-6 bg-card border-border">
-          <Building className="w-8 h-8 text-success mb-3" />
-          <p className="text-2xl font-bold">{Math.round(dashboard.opportunity_index * 100)}%</p>
-          <p className="text-xs text-muted-foreground uppercase">Opportunity Index</p>
-        </Card>
-      </div>
+      {/* Operational Risk Indicators - Computed from Events */}
+      {sortedEvents.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="p-6 bg-card border-border">
+            <Cloud className="w-8 h-8 text-warning mb-3" />
+            <p className="text-2xl font-bold">
+              {Math.min(100, Math.round(
+                (sortedEvents.filter(e => e.domain === 'meteorological' || e.summary?.toLowerCase().includes('weather')).length / Math.max(sortedEvents.length, 1)) * 100 * 3
+              ))}%
+            </p>
+            <p className="text-xs text-muted-foreground uppercase">Weather Impact</p>
+          </Card>
+          <Card className="p-6 bg-card border-border">
+            <AlertTriangle className="w-8 h-8 text-destructive mb-3" />
+            <p className="text-2xl font-bold">
+              {Math.round((criticalEvents.length / Math.max(sortedEvents.length, 1)) * 100)}%
+            </p>
+            <p className="text-xs text-muted-foreground uppercase">Critical Risk Level</p>
+          </Card>
+          <Card className="p-6 bg-card border-border">
+            <TrendingUp className="w-8 h-8 text-info mb-3" />
+            <p className="text-2xl font-bold">
+              {Math.min(100, Math.round(
+                (sortedEvents.filter(e => e.domain === 'economical' || e.domain === 'market').length / Math.max(sortedEvents.length, 1)) * 100 * 3
+              ))}%
+            </p>
+            <p className="text-xs text-muted-foreground uppercase">Market Activity</p>
+          </Card>
+          <Card className="p-6 bg-card border-border">
+            <Building className="w-8 h-8 text-success mb-3" />
+            <p className="text-2xl font-bold">
+              {Math.round((opportunityEvents.length / Math.max(sortedEvents.length, 1)) * 100)}%
+            </p>
+            <p className="text-xs text-muted-foreground uppercase">Opportunity Index</p>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

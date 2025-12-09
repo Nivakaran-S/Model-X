@@ -389,7 +389,7 @@ class VectorizationAgentNode:
 
                 # For non-English languages, skip anomaly detection
                 # The ML model was trained on English embeddings only.
-                # Different BERT models (SinhalaBERTo, Tamil-BERT) have completely 
+                # Different BERT models (SinhalaBERTo, Tamil-BERT) have completely
                 # different embedding spaces - Tamil embeddings have magnitude ~0.64
                 # while English has ~7.5 and Sinhala ~13.7. They cannot be compared.
                 if language in ["sinhala", "tamil"]:
@@ -453,7 +453,7 @@ class VectorizationAgentNode:
     def run_trending_detection(self, state: VectorizationAgentState) -> Dict[str, Any]:
         """
         Step 2.6: Detect trending topics from the input texts.
-        
+
         Extracts key entities/topics and tracks their mention velocity.
         Identifies:
         - Trending topics (momentum > 2x normal)
@@ -461,9 +461,9 @@ class VectorizationAgentNode:
         - Topics with increasing momentum
         """
         logger.info("[VectorizationAgent] STEP 2.6: Trending Detection")
-        
+
         detection_results = state.get("language_detection_results", [])
-        
+
         if not detection_results:
             logger.warning("[VectorizationAgent] No texts for trending detection")
             return {
@@ -475,7 +475,7 @@ class VectorizationAgentNode:
                     "spike_alerts": [],
                 },
             }
-        
+
         # Import trending detector
         try:
             from src.utils.trending_detector import (
@@ -484,11 +484,12 @@ class VectorizationAgentNode:
                 get_trending_now,
                 get_spikes,
             )
+
             TRENDING_AVAILABLE = True
         except ImportError as e:
             logger.warning(f"[VectorizationAgent] Trending detector not available: {e}")
             TRENDING_AVAILABLE = False
-        
+
         if not TRENDING_AVAILABLE:
             return {
                 "current_step": "trending_detection",
@@ -499,19 +500,19 @@ class VectorizationAgentNode:
                     "spike_alerts": [],
                 },
             }
-        
+
         # Extract entities and record mentions
         entities_found = []
-        
+
         for item in detection_results:
             text = item.get("text", "")  # Field is 'text', not 'original_text'
             language = item.get("language", "english")
             post_id = item.get("post_id", "")
-            
+
             # Simple entity extraction (keywords, capitalized words, etc.)
             # In production, you'd use NER or more sophisticated extraction
             extracted = self._extract_entities(text, language)
-            
+
             for entity in extracted:
                 try:
                     # Record mention with trending detector
@@ -520,15 +521,17 @@ class VectorizationAgentNode:
                         source=entity.get("source", "feed"),
                         domain=entity.get("domain", "general"),
                     )
-                    entities_found.append({
-                        "entity": entity["text"],
-                        "type": entity.get("type", "keyword"),
-                        "post_id": post_id,
-                        "language": language,
-                    })
+                    entities_found.append(
+                        {
+                            "entity": entity["text"],
+                            "type": entity.get("type", "keyword"),
+                            "post_id": post_id,
+                            "language": language,
+                        }
+                    )
                 except Exception as e:
                     logger.debug(f"[VectorizationAgent] Failed to record mention: {e}")
-        
+
         # Get current trending topics and spikes
         try:
             trending_topics = get_trending_now(limit=10)
@@ -537,12 +540,12 @@ class VectorizationAgentNode:
             logger.warning(f"[VectorizationAgent] Failed to get trending data: {e}")
             trending_topics = []
             spike_alerts = []
-        
+
         logger.info(
             f"[VectorizationAgent] Trending detection: {len(entities_found)} entities, "
             f"{len(trending_topics)} trending, {len(spike_alerts)} spikes"
         )
-        
+
         return {
             "current_step": "trending_detection",
             "trending_results": {
@@ -553,65 +556,97 @@ class VectorizationAgentNode:
                 "spike_alerts": spike_alerts,
             },
         }
-    
-    def _extract_entities(self, text: str, language: str = "english") -> List[Dict[str, Any]]:
+
+    def _extract_entities(
+        self, text: str, language: str = "english"
+    ) -> List[Dict[str, Any]]:
         """
         Extract entities/topics from text for trending tracking.
-        
+
         Uses simple heuristics:
         - Capitalized words/phrases (potential proper nouns)
         - Hashtags
         - Common news keywords
-        
+
         In production, integrate with NER model for better extraction.
         """
         entities = []
-        
+
         if not text:
             return entities
-        
+
         import re
-        
+
         # Extract hashtags
-        hashtags = re.findall(r'#(\w+)', text)
+        hashtags = re.findall(r"#(\w+)", text)
         for tag in hashtags:
-            entities.append({
-                "text": tag.lower(),
-                "type": "hashtag",
-                "source": "hashtag",
-                "domain": "social",
-            })
-        
+            entities.append(
+                {
+                    "text": tag.lower(),
+                    "type": "hashtag",
+                    "source": "hashtag",
+                    "domain": "social",
+                }
+            )
+
         # Extract capitalized phrases (potential proper nouns)
         # Match 1-4 consecutive capitalized words
-        cap_phrases = re.findall(r'\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})\b', text)
+        cap_phrases = re.findall(r"\b([A-Z][a-z]+(?: [A-Z][a-z]+){0,3})\b", text)
         for phrase in cap_phrases:
             # Skip common words
-            if phrase.lower() not in ['the', 'a', 'an', 'is', 'are', 'was', 'were', 'i', 'he', 'she', 'it']:
-                entities.append({
-                    "text": phrase,
-                    "type": "proper_noun",
-                    "source": "text",
-                    "domain": "general",
-                })
-        
+            if phrase.lower() not in [
+                "the",
+                "a",
+                "an",
+                "is",
+                "are",
+                "was",
+                "were",
+                "i",
+                "he",
+                "she",
+                "it",
+            ]:
+                entities.append(
+                    {
+                        "text": phrase,
+                        "type": "proper_noun",
+                        "source": "text",
+                        "domain": "general",
+                    }
+                )
+
         # News/event keywords
         news_keywords = [
-            'breaking', 'urgent', 'alert', 'emergency', 'crisis',
-            'earthquake', 'flood', 'tsunami', 'election', 'protest',
-            'strike', 'scandal', 'corruption', 'price', 'inflation',
+            "breaking",
+            "urgent",
+            "alert",
+            "emergency",
+            "crisis",
+            "earthquake",
+            "flood",
+            "tsunami",
+            "election",
+            "protest",
+            "strike",
+            "scandal",
+            "corruption",
+            "price",
+            "inflation",
         ]
-        
+
         text_lower = text.lower()
         for keyword in news_keywords:
             if keyword in text_lower:
-                entities.append({
-                    "text": keyword,
-                    "type": "news_keyword",
-                    "source": "keyword_match",
-                    "domain": "news",
-                })
-        
+                entities.append(
+                    {
+                        "text": keyword,
+                        "type": "news_keyword",
+                        "source": "keyword_match",
+                        "domain": "news",
+                    }
+                )
+
         # Deduplicate by text
         seen = set()
         unique_entities = []
@@ -620,9 +655,8 @@ class VectorizationAgentNode:
             if key not in seen:
                 seen.add(key)
                 unique_entities.append(e)
-        
-        return unique_entities[:15]  # Limit entities per text
 
+        return unique_entities[:15]  # Limit entities per text
 
     def generate_expert_summary(self, state: VectorizationAgentState) -> Dict[str, Any]:
         """
