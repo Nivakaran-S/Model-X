@@ -914,6 +914,113 @@ def get_currency_history(days: int = 7):
 
 
 # ============================================
+# TRENDING DETECTION ENDPOINTS
+# ============================================
+
+@app.get("/api/trending")
+def get_trending_topics(limit: int = 10):
+    """
+    Get currently trending topics.
+    
+    Returns topics with momentum > 2x (gaining traction).
+    """
+    try:
+        from src.utils.trending_detector import get_trending_now, get_spikes
+        
+        trending = get_trending_now(limit=limit)
+        spikes = get_spikes()
+        
+        return {
+            "status": "success",
+            "trending_topics": trending,
+            "spike_alerts": spikes,
+            "total_trending": len(trending),
+            "total_spikes": len(spikes)
+        }
+        
+    except Exception as e:
+        logger.error(f"[TrendingAPI] Error: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "trending_topics": [],
+            "spike_alerts": []
+        }
+
+
+@app.get("/api/trending/topic/{topic}")
+def get_topic_history(topic: str, hours: int = 24):
+    """
+    Get hourly mention history for a specific topic.
+    
+    Args:
+        topic: Topic name to get history for
+        hours: Number of hours of history to return (default 24)
+    """
+    try:
+        from src.utils.trending_detector import get_trending_detector
+        
+        detector = get_trending_detector()
+        history = detector.get_topic_history(topic, hours=hours)
+        momentum = detector.get_momentum(topic)
+        is_spike = detector.is_spike(topic)
+        
+        return {
+            "status": "success",
+            "topic": topic,
+            "momentum": momentum,
+            "is_spike": is_spike,
+            "history": history
+        }
+        
+    except Exception as e:
+        logger.error(f"[TrendingAPI] Error getting history for {topic}: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "topic": topic,
+            "momentum": 1.0,
+            "is_spike": False,
+            "history": []
+        }
+
+
+@app.post("/api/trending/record")
+def record_topic_mention(topic: str, source: str = "manual", domain: str = "general"):
+    """
+    Record a topic mention (for testing/manual tracking).
+    
+    Args:
+        topic: Topic/keyword being mentioned
+        source: Source of the mention (twitter, news, etc.)
+        domain: Domain category (political, economical, etc.)
+    """
+    try:
+        from src.utils.trending_detector import record_topic_mention as record_mention
+        
+        record_mention(topic=topic, source=source, domain=domain)
+        
+        # Get updated momentum
+        from src.utils.trending_detector import get_trending_detector
+        detector = get_trending_detector()
+        momentum = detector.get_momentum(topic)
+        
+        return {
+            "status": "success",
+            "message": f"Recorded mention for '{topic}'",
+            "current_momentum": momentum,
+            "is_spike": detector.is_spike(topic)
+        }
+        
+    except Exception as e:
+        logger.error(f"[TrendingAPI] Error recording mention: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+# ============================================
 # ANOMALY DETECTION ENDPOINTS
 # ============================================
 

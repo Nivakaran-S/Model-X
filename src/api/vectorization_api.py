@@ -72,6 +72,10 @@ class VectorizationResponse(BaseModel):
     domain_insights: List[Dict[str, Any]]
     processing_time_seconds: float
     vectors: Optional[List[Dict[str, Any]]] = None
+    # Anomaly Detection Results
+    anomaly_results: Optional[Dict[str, Any]] = None
+    # Trending Detection Results
+    trending_results: Optional[Dict[str, Any]] = None
 
 
 class HealthResponse(BaseModel):
@@ -169,6 +173,9 @@ async def vectorize_texts(request: VectorizationRequest):
             vectors=(
                 result.get("vector_embeddings") if request.include_vectors else None
             ),
+            # Include anomaly & trending detection results
+            anomaly_results=result.get("anomaly_results"),
+            trending_results=result.get("trending_results"),
         )
 
         return response

@@ -472,7 +472,41 @@ class ModelTrainer:
             optuna_study_name=None
         )
         
-        logger.info(f"[ModelTrainer] ✓ Training complete in {duration:.1f}s")
+        logger.info(f"[ModelTrainer] Training complete in {duration:.1f}s")
         logger.info(f"[ModelTrainer] Best model: {best_model['name'] if best_model else 'N/A'}")
+        
+        # ============================================
+        # TRAIN EMBEDDING-ONLY MODEL FOR LIVE INFERENCE
+        # ============================================
+        # The Vectorizer Agent only has 768-dim embeddings at inference time
+        # (no temporal/engagement features), so we train a separate model
+        try:
+            # Check if features include extra metadata (> 768 dims)
+            if X.shape[1] > 768:
+                logger.info(f"[ModelTrainer] Training embedding-only model for Vectorizer Agent...")
+                
+                # Extract only the first 768 dimensions (BERT embeddings)
+                X_embeddings_only = X[:, :768]
+                logger.info(f"[ModelTrainer] Embedding-only shape: {X_embeddings_only.shape}")
+                
+                # Train Isolation Forest on embeddings only
+                embedding_model = IsolationForest(
+                    contamination=0.1,
+                    n_estimators=100,
+                    random_state=42,
+                    n_jobs=-1
+                )
+                embedding_model.fit(X_embeddings_only)
+                
+                # Save to a dedicated path for the Vectorizer Agent
+                embedding_model_path = Path(self.config.output_directory) / "isolation_forest_embeddings_only.joblib"
+                joblib.dump(embedding_model, embedding_model_path)
+                
+                logger.info(f"[ModelTrainer] Embedding-only model saved: {embedding_model_path}")
+                logger.info(f"[ModelTrainer] This model is for real-time inference by Vectorizer Agent")
+            else:
+                logger.info(f"[ModelTrainer] Features are already embedding-only ({X.shape[1]} dims)")
+        except Exception as e:
+            logger.warning(f"[ModelTrainer] Embedding-only model training failed: {e}")
         
         return artifact

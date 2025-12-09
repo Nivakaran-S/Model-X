@@ -246,19 +246,54 @@ class RogerRAG:
             logger.error(f"[RAG] LLM initialization error: {e}")
 
     def _format_context(self, docs: List[Dict[str, Any]]) -> str:
-        """Format retrieved documents as context for LLM"""
+        """Format retrieved documents as context for LLM with temporal awareness"""
         if not docs:
             return "No relevant intelligence data found."
 
         context_parts = []
+        now = datetime.now()
+
         for i, doc in enumerate(docs[:5], 1):  # Top 5 docs
             meta = doc.get("metadata", {})
             domain = meta.get("domain", "unknown")
             platform = meta.get("platform", "")
             timestamp = meta.get("timestamp", "")
 
+            # Calculate age of the source
+            age_str = "unknown date"
+            if timestamp:
+                try:
+                    # Try to parse various timestamp formats
+                    for fmt in [
+                        "%Y-%m-%d %H:%M:%S",
+                        "%Y-%m-%dT%H:%M:%S",
+                        "%Y-%m-%d",
+                        "%d/%m/%Y",
+                    ]:
+                        try:
+                            ts_date = datetime.strptime(timestamp[:19], fmt)
+                            days_old = (now - ts_date).days
+                            if days_old == 0:
+                                age_str = "TODAY"
+                            elif days_old == 1:
+                                age_str = "1 day ago"
+                            elif days_old < 7:
+                                age_str = f"{days_old} days ago"
+                            elif days_old < 30:
+                                age_str = f"{days_old // 7} weeks ago"
+                            elif days_old < 365:
+                                age_str = f"{days_old // 30} months ago (⚠️ POTENTIALLY OUTDATED)"
+                            else:
+                                age_str = f"{days_old // 365} years ago (⚠️ OUTDATED)"
+                            break
+                        except ValueError:
+                            continue
+                except Exception:
+                    age_str = f"Date: {timestamp}"
+
             context_parts.append(
-                f"[Source {i}] Domain: {domain} | Platform: {platform} | Time: {timestamp}\n"
+                f"[Source {i}] Domain: {domain} | Platform: {platform}\n"
+                f"📅 TIMESTAMP: {timestamp} ({age_str})\n"
                 f"{doc['content']}\n"
             )
 
@@ -344,18 +379,34 @@ class RogerRAG:
                 "question": question,
             }
 
-        # RAG prompt
+        # RAG prompt with temporal awareness
+        current_date = datetime.now().strftime("%B %d, %Y")
         rag_prompt = ChatPromptTemplate.from_messages(
             [
                 (
                     "system",
-                    """You are Roger, an AI intelligence analyst for Sri Lanka. 
-            Answer questions based ONLY on the provided intelligence context.
-            Be concise but informative. Cite sources when possible.
-            If the context doesn't contain relevant information, say so.
+                    f"""You are Roger, an AI intelligence analyst for Sri Lanka.
             
-            Context:
-            {context}""",
+TODAY'S DATE: {current_date}
+
+CRITICAL TEMPORAL AWARENESS INSTRUCTIONS:
+1. ALWAYS check the timestamp/date of each source before using information
+2. For questions about "current" situations, ONLY use sources from the last 30 days
+3. If sources are outdated (more than 30 days old), explicitly mention this: "Based on data from [date], which may be outdated..."
+4. For political leadership questions, verify information is from recent sources
+5. If you find conflicting information from different time periods, prefer the most recent source
+6. Never present old information as current fact without temporal qualification
+
+IMPORTANT POLITICAL CONTEXT:
+- Presidential elections were held in Sri Lanka in September 2024
+- Always verify any claims about political leadership against the most recent sources
+
+Answer questions based ONLY on the provided intelligence context.
+Be concise but informative. Always cite source timestamps when available.
+If the context doesn't contain relevant RECENT information for current-state questions, say so.
+            
+Context (check timestamps carefully):
+{{context}}""",
                 ),
                 MessagesPlaceholder(variable_name="history"),
                 ("human", "{question}"),

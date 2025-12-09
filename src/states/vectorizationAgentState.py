@@ -33,6 +33,10 @@ class VectorizationAgentState(TypedDict, total=False):
     clustering_results: Optional[Dict[str, Any]]
     anomaly_results: Optional[Dict[str, Any]]
 
+    # ===== TRENDING DETECTION =====
+    trending_results: Optional[Dict[str, Any]]
+    # {trending_topics, spike_alerts, entities_extracted}
+
     # ===== EXPERT ANALYSIS =====
     expert_summary: Optional[str]  # LLM-generated summary combining all insights
     opportunities: List[Dict[str, Any]]  # Detected opportunities

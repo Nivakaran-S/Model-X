@@ -345,7 +345,7 @@ DELETE /api/intel/config/remove?target_type=profile&value=CompetitorX&platform=t
 ---
 
 ### 8. Vectorization Agent Graph (`vectorizationAgentGraph.py`) 🆕
-**Multilingual Text-to-Vector Conversion + Anomaly Detection**
+**6-Step Multilingual NLP Pipeline with Anomaly + Trending Detection**
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -366,27 +366,41 @@ DELETE /api/intel/config/remove?target_type=profile&value=CompetitorX&platform=t
                   │
                   ▼
 ┌─────────────────────────────────────────────────┐
-│ Step 3: Anomaly Detection (Isolation Forest) 🆕 │
-│ - Runs inference on every graph cycle           │
+│ Step 3: Anomaly Detection (Isolation Forest)    │
+│ - English: ML model inference                    │
+│ - Sinhala/Tamil: Skipped (incompatible vectors) │
 │ - Outputs anomaly_score (0-1)                   │
-│ - Graceful fallback if model not trained        │
 └─────────────────┬───────────────────────────────┘
                   │
                   ▼
 ┌─────────────────────────────────────────────────┐
-│ Step 4: Expert Summary (GroqLLM)                │
-│ - Opportunity identification                    │
-│ - Threat detection                              │
+│ Step 4: Trending Detection 🆕                    │
+│ - Entity extraction (hashtags, proper nouns)    │
+│ - Momentum: current_hour / avg_last_6_hours     │
+│ - Spike alerts when momentum > 3x               │
+└─────────────────┬───────────────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────────────┐
+│ Step 5: Expert Summary (GroqLLM)                │
+│ - Opportunity & threat identification           │
 │ - Sentiment analysis                            │
 └─────────────────┬───────────────────────────────┘
                   │
                   ▼
 ┌─────────────────────────────────────────────────┐
-│ Step 5: Format Output                           │
-│ - Includes anomaly insights in domain_insights  │
-│ - Passes results to parent graph                │
+│ Step 6: Format Output                           │
+│ - Includes anomaly + trending in domain_insights│
 └─────────────────────────────────────────────────┘
 ```
+
+**Trending Detection API Endpoints:**
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/trending` | GET | Get trending topics & spike alerts |
+| `/api/trending/topic/{topic}` | GET | Get hourly history for a topic |
+| `/api/trending/record` | POST | Record a topic mention (testing) |
 
 ---
 
