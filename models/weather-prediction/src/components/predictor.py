@@ -336,7 +336,7 @@ class WeatherPredictor:
         with open(output_path, "w") as f:
             json.dump(predictions, f, indent=2)
         
-        logger.info(f"[PREDICTOR] ✓ Saved predictions to {output_path}")
+        logger.info(f"[PREDICTOR] [OK] Saved predictions to {output_path}")
         return output_path
     
     def get_latest_predictions(self) -> Optional[Dict]:
@@ -371,4 +371,4 @@ if __name__ == "__main__":
     
     # Save
     output_path = predictor.save_predictions(predictions)
-    print(f"\n✓ Saved to: {output_path}")
+    print(f"\n[OK] Saved to: {output_path}")

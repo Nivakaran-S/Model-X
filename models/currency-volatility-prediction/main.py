@@ -64,7 +64,7 @@ def run_training(epochs: int = 100):
     config = ModelTrainerConfig(epochs=epochs)
     trainer = CurrencyGRUTrainer(config)
     
-    results = trainer.train(df=df, use_mlflow=True)
+    results = trainer.train(df=df, use_mlflow=False)  # Disabled due to Windows Unicode encoding issues
     
     logger.info(f"\nTraining Results:")
     logger.info(f"  MAE: {results['test_mae']:.4f} LKR")

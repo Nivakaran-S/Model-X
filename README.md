@@ -90,6 +90,17 @@ A multi-agent AI system that aggregates intelligence from 47+ data sources to pr
 - All 25 districts coverage
 - Year-wise CSV export for model training
 
+✅ **Operational Dashboard Metrics** 🆕:
+- **Logistics Friction**: Average confidence of mobility/social domain risk events
+- **Compliance Volatility**: Average confidence of political domain risks
+- **Market Instability**: Average confidence of market/economical domain risks
+- **Opportunity Index**: Average confidence of opportunity-classified events
+
+✅ **Multi-District Province-Aware Event Categorization** 🆕:
+- Events mentioning provinces are displayed in all constituent districts
+- Supports: Western, Southern, Central, Northern, Eastern, Sabaragamuwa, Uva, North Western, North Central provinces
+- Both frontend (MapView, DistrictInfoPanel) and backend are synchronized
+
 ---
 
 ## 🏗️ System Architecture
@@ -837,6 +848,107 @@ BATCH_THRESHOLD=1000
 
 ---
 
+## 🧪 Testing Framework
+
+Industry-level testing infrastructure for the agentic AI system.
+
+### Test Structure
+
+```
+tests/
+├── conftest.py                 # Pytest fixtures and configuration
+├── unit/                       # Unit tests for individual components
+│   └── test_utils.py
+├── integration/                # Multi-component integration tests
+│   └── test_agent_routing.py
+├── evaluation/                 # LLM-as-Judge evaluation tests
+│   ├── agent_evaluator.py      # Evaluation harness
+│   ├── adversarial_tests.py    # Prompt injection & edge cases
+│   └── golden_datasets/
+│       └── expected_responses.json
+└── e2e/                        # End-to-end workflow tests
+    └── test_full_pipeline.py
+```
+
+### LangSmith Integration
+
+Automatic tracing for all agent decisions when `LANGSMITH_API_KEY` is set.
+
+```env
+# Add to .env
+LANGSMITH_API_KEY=your_langsmith_api_key
+LANGSMITH_PROJECT=roger-intelligence  # Optional, defaults to 'roger-intelligence'
+```
+
+**View traces:** [smith.langchain.com](https://smith.langchain.com/)
+
+### Running Tests
+
+```bash
+# Run all tests
+python run_tests.py
+
+# Run specific test suites
+python run_tests.py --unit           # Unit tests only
+python run_tests.py --adversarial    # Security/adversarial tests
+python run_tests.py --eval           # LLM-as-Judge evaluation
+python run_tests.py --e2e            # End-to-end tests
+
+# With coverage report
+python run_tests.py --coverage
+
+# Enable LangSmith tracing in tests
+python run_tests.py --with-langsmith
+```
+
+### Agent Evaluation Harness
+
+The `agent_evaluator.py` implements the **LLM-as-Judge** pattern:
+
+| Metric | Description |
+|--------|-------------|
+| **Tool Selection Accuracy** | Did the agent use the correct tools? |
+| **Response Quality** | Is the response relevant and coherent? |
+| **BLEU Score** | N-gram text similarity (0-1, higher = better match) |
+| **Hallucination Detection** | Did the agent fabricate information? |
+| **Graceful Degradation** | Does it handle failures properly? |
+
+```bash
+# Run standalone evaluator
+python tests/evaluation/agent_evaluator.py
+```
+
+### Adversarial Testing
+
+Tests for security and robustness:
+
+| Test Category | Description |
+|--------------|-------------|
+| **Prompt Injection** | Ignore instructions, jailbreak, context switching |
+| **Out-of-Domain** | Non-SL queries, illegal requests, impossible questions |
+| **Malformed Input** | Empty, XSS, SQL injection, unicode flood |
+| **Graceful Degradation** | API timeouts, empty responses, rate limiting |
+
+### CI/CD Pipeline
+
+GitHub Actions workflow (`.github/workflows/test.yml`):
+
+```yaml
+on: [push, pull_request]
+
+jobs:
+  unit-tests:        # Runs on every push
+  adversarial-tests: # Security tests on every push
+  evaluation-tests:  # LLM evaluation on main branch only
+  lint:              # Code quality checks
+```
+
+**Required Secrets:**
+- `LANGSMITH_API_KEY` - For evaluation test logging
+- `GROQ_API_KEY` - For LLM-based evaluation
+
+---
+
 ## 🐛 Troubleshooting
 
 ### FastText won't install on Windows
@@ -860,6 +972,27 @@ docker info
 cd models/anomaly-detection
 astro dev init
 astro dev start
+```
+
+### NumPy 2.0 / ChromaDB compatibility error
+```bash
+# If you see "A module that was compiled using NumPy 1.x cannot be run in NumPy 2.x"
+pip install "numpy<2.0"
+
+# Or upgrade chromadb to latest
+pip install --upgrade chromadb
+```
+
+### Keras model loading error ("Could not locate function 'mse'")
+```bash
+# If currency/weather models fail to load with Keras 3.x
+# Retrain the model - it will save in .keras format automatically
+cd models/currency-volatility-prediction
+python main.py --mode train
+
+# Or for weather
+cd models/weather-prediction
+python main.py --mode train
 ```
 
 ---

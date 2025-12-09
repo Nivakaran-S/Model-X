@@ -63,10 +63,10 @@ def setup_mlflow():
     if username and password:
         os.environ["MLFLOW_TRACKING_USERNAME"] = username
         os.environ["MLFLOW_TRACKING_PASSWORD"] = password
-        print(f"[MLflow] ✓ Configured with DagsHub credentials for {username}")
+        print(f"[MLflow] [OK] Configured with DagsHub credentials for {username}")
     
     mlflow.set_tracking_uri(tracking_uri)
-    print(f"[MLflow] ✓ Tracking URI: {tracking_uri}")
+    print(f"[MLflow] [OK] Tracking URI: {tracking_uri}")
     return True
 
 
@@ -356,7 +356,7 @@ class WeatherLSTMTrainer:
             "target_scaler": self.target_scaler
         }, scaler_path)
         
-        logger.info(f"[LSTM] ✓ Model saved to {model_path}")
+        logger.info(f"[LSTM] [OK] Model saved to {model_path}")
         
         return {
             "station": station_name,

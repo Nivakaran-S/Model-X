@@ -469,7 +469,11 @@ JSON only:"""
         """
         logger.info("[DataRefresherAgent] ===== REFRESHING DASHBOARD =====")
         
-        feed = getattr(state, "final_ranked_feed", [])
+        # Get feed from state - handle both dict and object access
+        if isinstance(state, dict):
+            feed = state.get("final_ranked_feed", [])
+        else:
+            feed = getattr(state, "final_ranked_feed", [])
         
         # Default snapshot structure
         snapshot = {
@@ -492,9 +496,9 @@ JSON only:"""
             logger.info("[DataRefresherAgent] Empty feed - returning zero metrics")
             return {"risk_dashboard_snapshot": snapshot}
         
-        # Compute aggregate metrics
-        confidences = [float(item.get("confidence_score", 0.0)) for item in feed]
-        avg_confidence = sum(confidences) / len(confidences)
+        # Compute aggregate metrics - feed uses 'confidence' field, not 'confidence_score'
+        confidences = [float(item.get("confidence", item.get("confidence_score", 0.5))) for item in feed]
+        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
         high_priority_count = sum(1 for c in confidences if c >= 0.7)
         
         # Domain-specific scoring buckets
@@ -502,8 +506,9 @@ JSON only:"""
         opportunity_scores = []
         
         for item in feed:
-            domain = item.get("target_agent", "unknown")
-            score = item.get("confidence_score", 0.0)
+            # Feed uses 'domain' field, not 'target_agent'
+            domain = item.get("domain", item.get("target_agent", "unknown"))
+            score = item.get("confidence", item.get("confidence_score", 0.5))
             impact = item.get("impact_type", "risk")
             
             # Separate Opportunities from Risks
@@ -559,7 +564,7 @@ JSON only:"""
                 # Record topics from feed
                 for item in feed:
                     summary = item.get("summary", "")
-                    domain = item.get("target_agent", "unknown")
+                    domain = item.get("domain", item.get("target_agent", "unknown"))
                     
                     # Extract key topic words (simplified - just use first 3 words)
                     words = summary.split()[:5]

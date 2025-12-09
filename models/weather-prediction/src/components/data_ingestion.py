@@ -63,7 +63,7 @@ class DataIngestion:
             df.to_csv(save_path, index=False)
             logger.info(f"[DATA_INGESTION] Generated {len(df)} synthetic records")
         
-        logger.info(f"[DATA_INGESTION] ✓ Ingested {len(df)} total records")
+        logger.info(f"[DATA_INGESTION] [OK] Ingested {len(df)} total records")
         return save_path
     
     def _generate_synthetic_data(self) -> pd.DataFrame:

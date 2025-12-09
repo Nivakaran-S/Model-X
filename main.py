@@ -32,6 +32,118 @@ from src.storage.storage_manager import StorageManager
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("Roger_api")
 
+
+# ============================================
+# AUTO-TRAINING: Check and train models if missing
+# ============================================
+
+def check_and_train_models():
+    """
+    Check if ML models are trained. If not, trigger training in background.
+    Called on startup to ensure models are available.
+    """
+    from pathlib import Path
+    import subprocess
+    
+    PROJECT_ROOT = Path(__file__).parent
+    
+    # Define model checks: (name, model_path, train_command)
+    model_checks = [
+        {
+            "name": "Anomaly Detection",
+            "check_paths": [
+                PROJECT_ROOT / "models" / "anomaly-detection" / "artifacts" / "models",
+            ],
+            "check_files": ["*.joblib", "*.pkl"],
+            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "anomaly-detection" / "main.py")]
+        },
+        {
+            "name": "Weather Prediction",
+            "check_paths": [
+                PROJECT_ROOT / "models" / "weather-prediction" / "artifacts" / "models",
+            ],
+            "check_files": ["*.h5", "*.keras"],
+            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "weather-prediction" / "main.py"), "--mode", "full"]
+        },
+        {
+            "name": "Currency Prediction",
+            "check_paths": [
+                PROJECT_ROOT / "models" / "currency-volatility-prediction" / "artifacts" / "models",
+            ],
+            "check_files": ["*.h5", "*.keras"],
+            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "currency-volatility-prediction" / "main.py"), "--mode", "full"]
+        },
+        {
+            "name": "Stock Prediction",
+            "check_paths": [
+                PROJECT_ROOT / "models" / "stock-price-prediction" / "artifacts" / "models",
+            ],
+            "check_files": ["*.h5", "*.keras"],
+            "train_cmd": [sys.executable, str(PROJECT_ROOT / "models" / "stock-price-prediction" / "main.py"), "--mode", "full"]
+        },
+    ]
+    
+    def has_trained_model(check_paths, check_files):
+        """Check if any trained model files exist."""
+        for path in check_paths:
+            if path.exists():
+                for pattern in check_files:
+                    if list(path.glob(pattern)):
+                        return True
+                    # Also check subdirectories
+                    if list(path.glob(f"**/{pattern}")):
+                        return True
+        return False
+    
+    def train_in_background(name, cmd):
+        """Run training in a background thread."""
+        def _train():
+            logger.info(f"[AUTO-TRAIN] Starting {name} training...")
+            try:
+                result = subprocess.run(
+                    cmd,
+                    cwd=str(PROJECT_ROOT),
+                    capture_output=True,
+                    text=True,
+                    timeout=1800  # 30 min timeout
+                )
+                if result.returncode == 0:
+                    logger.info(f"[AUTO-TRAIN] ✓ {name} training complete!")
+                else:
+                    logger.warning(f"[AUTO-TRAIN] ⚠ {name} training failed: {result.stderr[:500]}")
+            except subprocess.TimeoutExpired:
+                logger.error(f"[AUTO-TRAIN] ✗ {name} training timed out (30 min)")
+            except Exception as e:
+                logger.error(f"[AUTO-TRAIN] ✗ {name} training error: {e}")
+        
+        thread = threading.Thread(target=_train, daemon=True, name=f"train_{name}")
+        thread.start()
+        return thread
+    
+    # Check each model
+    training_threads = []
+    for model in model_checks:
+        if has_trained_model(model["check_paths"], model["check_files"]):
+            logger.info(f"[MODEL CHECK] ✓ {model['name']} - Model found")
+        else:
+            logger.warning(f"[MODEL CHECK] ⚠ {model['name']} - No model found, starting training...")
+            thread = train_in_background(model["name"], model["train_cmd"])
+            training_threads.append((model["name"], thread))
+    
+    if training_threads:
+        logger.info(f"[AUTO-TRAIN] Started {len(training_threads)} background training jobs")
+    else:
+        logger.info("[MODEL CHECK] All models found - no training needed")
+    
+    return training_threads
+
+
+# Run model check on module load (startup)
+logger.info("=" * 60)
+logger.info("[STARTUP] Checking ML models...")
+logger.info("=" * 60)
+_training_threads = check_and_train_models()
+
 app = FastAPI(title="Roger Intelligence Platform API")
 
 app.add_middleware(
@@ -201,6 +313,22 @@ def categorize_feed_by_district(feed: Dict[str, Any]) -> str:
     """
     Categorize feed by Sri Lankan district based on summary text.
     Returns district name or "National" if not district-specific.
+    NOTE: This returns the FIRST match. Use get_all_matching_districts() for multi-district feeds.
+    """
+    districts = get_all_matching_districts(feed)
+    return districts[0] if districts else "National"
+
+
+def get_all_matching_districts(feed: Dict[str, Any]) -> List[str]:
+    """
+    Get ALL districts mentioned in a feed (direct or via province).
+    
+    Supports:
+    - Direct district names (Colombo, Kandy, etc.)
+    - Province names that map to multiple districts
+    - Commonly referenced regions
+    
+    Returns list of all matching district names.
     """
     summary = feed.get("summary", "").lower()
     
@@ -213,11 +341,45 @@ def categorize_feed_by_district(feed: Dict[str, Any]) -> str:
         "Moneragala", "Ratnapura", "Kegalle"
     ]
     
+    # Province to districts mapping
+    province_mapping = {
+        "western province": ["Colombo", "Gampaha", "Kalutara"],
+        "western": ["Colombo", "Gampaha", "Kalutara"],
+        "central province": ["Kandy", "Matale", "Nuwara Eliya"],
+        "central": ["Kandy", "Matale", "Nuwara Eliya"],
+        "southern province": ["Galle", "Matara", "Hambantota"],
+        "southern provinces": ["Galle", "Matara", "Hambantota"],
+        "southern": ["Galle", "Matara", "Hambantota"],
+        "south": ["Galle", "Matara", "Hambantota"],
+        "northern province": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+        "northern": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+        "north": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+        "eastern province": ["Batticaloa", "Ampara", "Trincomalee"],
+        "eastern": ["Batticaloa", "Ampara", "Trincomalee"],
+        "east": ["Batticaloa", "Ampara", "Trincomalee"],
+        "north western province": ["Kurunegala", "Puttalam"],
+        "north western": ["Kurunegala", "Puttalam"],
+        "north central province": ["Anuradhapura", "Polonnaruwa"],
+        "north central": ["Anuradhapura", "Polonnaruwa"],
+        "uva province": ["Badulla", "Moneragala"],
+        "uva": ["Badulla", "Moneragala"],
+        "sabaragamuwa province": ["Ratnapura", "Kegalle"],
+        "sabaragamuwa": ["Ratnapura", "Kegalle"],
+    }
+    
+    matched_districts = set()
+    
+    # Check for province mentions first
+    for province, province_districts in province_mapping.items():
+        if province in summary:
+            matched_districts.update(province_districts)
+    
+    # Check for direct district mentions
     for district in districts:
         if district.lower() in summary:
-            return district
+            matched_districts.add(district)
     
-    return "National"
+    return list(matched_districts)
 
 
 def run_graph_loop():
@@ -563,6 +725,191 @@ def get_national_threat_score():
             "national_threat_score": 0,
             "threat_level": "UNKNOWN",
             "error": str(e)
+        }
+
+
+@app.get("/api/weather/predictions")
+def get_weather_predictions():
+    """
+    Get next-day weather predictions for all 25 Sri Lankan districts.
+    
+    Returns predictions from trained LSTM models (or climate fallback if models not available).
+    Includes temperature, rainfall, humidity, flood risk, and severity for each district.
+    """
+    try:
+        from pathlib import Path
+        import json
+        from datetime import datetime, timedelta
+        
+        # Path to predictions output
+        predictions_dir = Path(__file__).parent / "models" / "weather-prediction" / "output" / "predictions"
+        
+        # Try to find most recent predictions file
+        prediction_files = list(predictions_dir.glob("predictions_*.json")) if predictions_dir.exists() else []
+        
+        if prediction_files:
+            # Get most recent predictions file
+            latest_file = max(prediction_files, key=lambda p: p.stem)
+            
+            with open(latest_file, "r") as f:
+                predictions = json.load(f)
+            
+            return {
+                "status": "success",
+                "prediction_date": predictions.get("prediction_date", ""),
+                "generated_at": predictions.get("generated_at", ""),
+                "districts": predictions.get("districts", {}),
+                "total_districts": len(predictions.get("districts", {})),
+                "source": "lstm_models" if not predictions.get("is_fallback") else "climate_fallback"
+            }
+        
+        # No predictions file - try to generate on-the-fly
+        try:
+            from models.weather_prediction.src.components.predictor import WeatherPredictor
+            
+            predictor = WeatherPredictor()
+            predictions = predictor.predict_all_districts()
+            
+            return {
+                "status": "success",
+                "prediction_date": predictions.get("prediction_date", (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")),
+                "generated_at": predictions.get("generated_at", datetime.now().isoformat()),
+                "districts": predictions.get("districts", {}),
+                "total_districts": len(predictions.get("districts", {})),
+                "source": "live_prediction"
+            }
+        except Exception as pred_err:
+            logger.warning(f"[WeatherAPI] Could not generate live predictions: {pred_err}")
+        
+        # Fallback - no predictions available
+        return {
+            "status": "no_data",
+            "message": "Weather predictions not available. Run: python models/weather-prediction/main.py --mode predict",
+            "prediction_date": (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d"),
+            "generated_at": datetime.now().isoformat(),
+            "districts": {},
+            "total_districts": 0
+        }
+        
+    except Exception as e:
+        logger.error(f"[WeatherAPI] Error fetching predictions: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "districts": {},
+            "total_districts": 0
+        }
+
+
+# ============================================
+# CURRENCY PREDICTION ENDPOINTS
+# ============================================
+
+@app.get("/api/currency/prediction")
+def get_currency_prediction():
+    """
+    Get next-day USD/LKR currency prediction.
+    
+    Returns prediction from trained GRU model (or fallback if model not available).
+    """
+    try:
+        from pathlib import Path
+        import json
+        from datetime import datetime, timedelta
+        
+        # Path to currency predictions output
+        predictions_dir = Path(__file__).parent / "models" / "currency-volatility-prediction" / "output" / "predictions"
+        
+        # Try to find most recent predictions file
+        prediction_files = list(predictions_dir.glob("currency_prediction_*.json")) if predictions_dir.exists() else []
+        
+        if prediction_files:
+            # Get most recent predictions file
+            latest_file = max(prediction_files, key=lambda p: p.stem)
+            
+            with open(latest_file, "r") as f:
+                prediction = json.load(f)
+            
+            return {
+                "status": "success",
+                "prediction": prediction,
+                "source": "gru_model" if not prediction.get("is_fallback") else "fallback"
+            }
+        
+        # No predictions file
+        return {
+            "status": "no_data",
+            "message": "Currency prediction not available. Run: python models/currency-volatility-prediction/main.py --mode predict",
+            "prediction": None
+        }
+        
+    except Exception as e:
+        logger.error(f"[CurrencyAPI] Error fetching prediction: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "prediction": None
+        }
+
+
+@app.get("/api/currency/history")
+def get_currency_history(days: int = 7):
+    """
+    Get historical USD/LKR exchange rate data.
+    
+    Args:
+        days: Number of days of history to return (default 7)
+    
+    Returns:
+        List of historical rates with date and close price.
+    """
+    try:
+        from pathlib import Path
+        import pandas as pd
+        
+        # Path to currency data
+        data_dir = Path(__file__).parent / "models" / "currency-volatility-prediction" / "artifacts" / "data"
+        
+        # Find the data file
+        data_files = list(data_dir.glob("currency_data_*.csv")) if data_dir.exists() else []
+        
+        if data_files:
+            # Get most recent data file
+            latest_file = max(data_files, key=lambda p: p.stem)
+            df = pd.read_csv(latest_file)
+            
+            # Get last N days
+            df['date'] = pd.to_datetime(df['date'])
+            df = df.sort_values('date', ascending=False).head(days)
+            df = df.sort_values('date', ascending=True)
+            
+            history = []
+            for _, row in df.iterrows():
+                history.append({
+                    "date": row['date'].strftime("%Y-%m-%d"),
+                    "close": float(row['close']),
+                    "high": float(row.get('high', row['close'])),
+                    "low": float(row.get('low', row['close']))
+                })
+            
+            return {
+                "status": "success",
+                "history": history,
+                "days": len(history)
+            }
+        
+        return {
+            "status": "no_data",
+            "message": "No historical data available. Run data ingestion first.",
+            "history": []
+        }
+        
+    except Exception as e:
+        logger.error(f"[CurrencyAPI] Error fetching history: {e}")
+        return {
+            "status": "error",
+            "error": str(e),
+            "history": []
         }
 
 

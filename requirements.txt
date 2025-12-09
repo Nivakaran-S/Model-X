@@ -56,8 +56,16 @@ pypdf
 # ---------------------------------------------------------
 pytest
 pytest-asyncio
+pytest-cov
 black
 flake8
+
+# ---------------------------------------------------------
+# LangSmith & Agent Evaluation (Industry-Level Testing)
+# ---------------------------------------------------------
+langsmith>=0.1.0
+deepeval>=0.21.0
+ragas>=0.1.0
 
 # ---------------------------------------------------------
 # Dashboard (Optional)

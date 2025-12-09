@@ -16,6 +16,14 @@ from src.llms.groqllm import GroqLLM
 from src.states.combinedAgentState import CombinedAgentState
 from src.nodes.combinedAgentNode import CombinedAgentNode
 
+# LangSmith Tracing (auto-configures if LANGSMITH_API_KEY is set)
+try:
+    from src.config.langsmith_config import LangSmithConfig
+    _langsmith = LangSmithConfig()
+    _langsmith.configure()
+except ImportError:
+    pass  # LangSmith not installed, tracing disabled
+
 
 # Import Sub-Graph Builders
 from src.graphs.socialAgentGraph import SocialGraphBuilder

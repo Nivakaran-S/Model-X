@@ -12,6 +12,54 @@ interface DistrictInfoPanelProps {
 const DistrictInfoPanel = ({ district }: DistrictInfoPanelProps) => {
   const { events } = useRogerData();
 
+  // Province to districts mapping - events mentioning provinces should appear in all their districts
+  const provinceToDistricts: Record<string, string[]> = {
+    "western province": ["Colombo", "Gampaha", "Kalutara"],
+    "western": ["Colombo", "Gampaha", "Kalutara"],
+    "central province": ["Kandy", "Matale", "Nuwara Eliya"],
+    "central": ["Kandy", "Matale", "Nuwara Eliya"],
+    "southern province": ["Galle", "Matara", "Hambantota"],
+    "southern provinces": ["Galle", "Matara", "Hambantota"],
+    "southern": ["Galle", "Matara", "Hambantota"],
+    "south": ["Galle", "Matara", "Hambantota"],
+    "northern province": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+    "northern": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+    "north": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+    "eastern province": ["Batticaloa", "Ampara", "Trincomalee"],
+    "eastern": ["Batticaloa", "Ampara", "Trincomalee"],
+    "east": ["Batticaloa", "Ampara", "Trincomalee"],
+    "north western province": ["Kurunegala", "Puttalam"],
+    "north western": ["Kurunegala", "Puttalam"],
+    "north central province": ["Anuradhapura", "Polonnaruwa"],
+    "north central": ["Anuradhapura", "Polonnaruwa"],
+    "uva province": ["Badulla", "Moneragala"],
+    "uva": ["Badulla", "Moneragala"],
+    "sabaragamuwa province": ["Ratnapura", "Kegalle"],
+    "sabaragamuwa": ["Ratnapura", "Kegalle"],
+  };
+
+  // Helper: Check if an event relates to a specific district
+  const eventMatchesDistrict = (event: any, targetDistrict: string): boolean => {
+    const summary = (event.summary ?? '').toLowerCase();
+    const districtLower = targetDistrict.toLowerCase();
+
+    // Direct district name match
+    if (summary.includes(districtLower)) {
+      return true;
+    }
+
+    // Check if any mentioned province includes this district
+    for (const [province, districts] of Object.entries(provinceToDistricts)) {
+      if (summary.includes(province)) {
+        if (districts.some(d => d.toLowerCase() === districtLower)) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
   if (!district) {
     return (
       <Card className="p-6 bg-card border-border h-full flex items-center justify-center">
@@ -23,10 +71,8 @@ const DistrictInfoPanel = ({ district }: DistrictInfoPanelProps) => {
     );
   }
 
-  // FIXED: Filter events that relate to this district (with null-safe check)
-  const districtEvents = events.filter(e =>
-    e.summary?.toLowerCase().includes(district.toLowerCase())
-  );
+  // FIXED: Filter events that relate to this district (with province awareness)
+  const districtEvents = events.filter(e => eventMatchesDistrict(e, district));
 
   // FIXED: Categorize events - include ALL relevant domains
   const alerts = districtEvents.filter(e => e.impact_type === 'risk');

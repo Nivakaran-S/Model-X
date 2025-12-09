@@ -71,15 +71,79 @@ def run_training(station: str = None, epochs: int = 100):
             result = trainer.train(
                 df=df,
                 station_name=station_name,
-                epochs=epochs
+                epochs=epochs,
+                use_mlflow=False  # Disabled due to Windows Unicode encoding issues
             )
             results.append(result)
-            logger.info(f"✓ {station_name}: MAE={result['test_mae']:.3f}")
+            logger.info(f"[OK] {station_name}: MAE={result['test_mae']:.3f}")
         except Exception as e:
-            logger.error(f"✗ {station_name}: {e}")
+            logger.error(f"[FAIL] {station_name}: {e}")
     
     logger.info(f"Training complete! Trained {len(results)} models.")
     return results
+
+
+def check_and_train_missing_models(priority_only: bool = True, epochs: int = 25):
+    """
+    Check for missing LSTM models and train them automatically.
+    
+    Args:
+        priority_only: If True, only train priority stations (COLOMBO, KANDY, etc.)
+                      If False, train all configured stations
+        epochs: Number of epochs for training
+        
+    Returns:
+        List of trained station names
+    """
+    from entity.config_entity import WEATHER_STATIONS
+    
+    models_dir = PIPELINE_ROOT / "artifacts" / "models"
+    models_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Priority stations for minimal prediction coverage
+    priority_stations = ["COLOMBO", "KANDY", "JAFFNA", "BATTICALOA", "RATNAPURA"]
+    
+    stations_to_check = priority_stations if priority_only else list(WEATHER_STATIONS.keys())
+    missing_stations = []
+    
+    # Check which models are missing
+    for station in stations_to_check:
+        model_file = models_dir / f"lstm_{station.lower()}.h5"
+        if not model_file.exists():
+            missing_stations.append(station)
+    
+    if not missing_stations:
+        logger.info("[AUTO-TRAIN] All required models exist.")
+        return []
+    
+    logger.info(f"[AUTO-TRAIN] Missing models for: {', '.join(missing_stations)}")
+    logger.info("[AUTO-TRAIN] Starting automatic training...")
+    
+    # Ensure we have data first
+    data_path = PIPELINE_ROOT / "artifacts" / "data"
+    existing_data = list(data_path.glob("weather_history_*.csv")) if data_path.exists() else []
+    
+    if not existing_data:
+        logger.info("[AUTO-TRAIN] No training data found, ingesting...")
+        try:
+            run_data_ingestion(months=3)
+        except Exception as e:
+            logger.error(f"[AUTO-TRAIN] Data ingestion failed: {e}")
+            logger.info("[AUTO-TRAIN] Cannot train without data. Please run: python main.py --mode ingest")
+            return []
+    
+    # Train missing models
+    trained = []
+    for station in missing_stations:
+        try:
+            logger.info(f"[AUTO-TRAIN] Training {station}...")
+            run_training(station=station, epochs=epochs)
+            trained.append(station)
+        except Exception as e:
+            logger.warning(f"[AUTO-TRAIN] Failed to train {station}: {e}")
+    
+    logger.info(f"[AUTO-TRAIN] Auto-training complete. Trained {len(trained)} models: {', '.join(trained)}")
+    return trained
 
 
 def run_prediction():
@@ -159,9 +223,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Weather Prediction Pipeline")
     parser.add_argument(
         "--mode",
-        choices=["ingest", "train", "predict", "full"],
+        choices=["ingest", "train", "predict", "full", "auto-train"],
         default="predict",
-        help="Pipeline mode to run"
+        help="Pipeline mode to run (auto-train checks and trains missing models)"
     )
     parser.add_argument(
         "--months",
@@ -181,6 +245,11 @@ if __name__ == "__main__":
         default=100,
         help="Training epochs"
     )
+    parser.add_argument(
+        "--skip-auto-train",
+        action="store_true",
+        help="Skip automatic training of missing models during predict"
+    )
     
     args = parser.parse_args()
     
@@ -188,7 +257,14 @@ if __name__ == "__main__":
         run_data_ingestion(months=args.months)
     elif args.mode == "train":
         run_training(station=args.station, epochs=args.epochs)
+    elif args.mode == "auto-train":
+        # Explicitly auto-train missing models
+        check_and_train_missing_models(priority_only=True, epochs=25)
     elif args.mode == "predict":
+        # Auto-train missing models before prediction (unless skipped)
+        if not args.skip_auto_train:
+            check_and_train_missing_models(priority_only=True, epochs=25)
         run_prediction()
     elif args.mode == "full":
         run_full_pipeline()
+

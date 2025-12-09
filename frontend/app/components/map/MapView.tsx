@@ -11,21 +11,63 @@ const MapView = () => {
   const [selectedDistrict, setSelectedDistrict] = useState<string | null>(null);
   const { events, isConnected } = useRogerData();
 
-  // Count alerts per district (simplified - matches district names in event summaries)
+  // Province to districts mapping
+  const provinceToDistricts: Record<string, string[]> = {
+    "western province": ["Colombo", "Gampaha", "Kalutara"],
+    "western": ["Colombo", "Gampaha", "Kalutara"],
+    "central province": ["Kandy", "Matale", "Nuwara Eliya"],
+    "central": ["Kandy", "Matale", "Nuwara Eliya"],
+    "southern province": ["Galle", "Matara", "Hambantota"],
+    "southern provinces": ["Galle", "Matara", "Hambantota"],
+    "southern": ["Galle", "Matara", "Hambantota"],
+    "south": ["Galle", "Matara", "Hambantota"],
+    "northern province": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+    "northern": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+    "north": ["Jaffna", "Kilinochchi", "Mannar", "Vavuniya", "Mullaitivu"],
+    "eastern province": ["Batticaloa", "Ampara", "Trincomalee"],
+    "eastern": ["Batticaloa", "Ampara", "Trincomalee"],
+    "east": ["Batticaloa", "Ampara", "Trincomalee"],
+    "north western province": ["Kurunegala", "Puttalam"],
+    "north western": ["Kurunegala", "Puttalam"],
+    "north central province": ["Anuradhapura", "Polonnaruwa"],
+    "north central": ["Anuradhapura", "Polonnaruwa"],
+    "uva province": ["Badulla", "Moneragala"],
+    "uva": ["Badulla", "Moneragala"],
+    "sabaragamuwa province": ["Ratnapura", "Kegalle"],
+    "sabaragamuwa": ["Ratnapura", "Kegalle"],
+  };
+
+  const allDistricts = [
+    'Colombo', 'Gampaha', 'Kandy', 'Jaffna', 'Galle', 'Matara', 'Hambantota',
+    'Anuradhapura', 'Polonnaruwa', 'Batticaloa', 'Ampara', 'Trincomalee',
+    'Kurunegala', 'Puttalam', 'Kalutara', 'Ratnapura', 'Kegalle', 'Nuwara Eliya',
+    'Badulla', 'Moneragala', 'Kilinochchi', 'Mannar', 'Vavuniya', 'Mullaitivu', 'Matale'
+  ];
+
+  // Count alerts per district with province awareness
   const districtAlertCounts: Record<string, number> = {};
 
   (events ?? []).forEach(event => {
     const summary = (event.summary ?? '').toLowerCase();
-    // Check if district name is mentioned in the event
-    ['colombo', 'gampaha', 'kandy', 'jaffna', 'galle', 'matara', 'hambantota',
-      'anuradhapura', 'polonnaruwa', 'batticaloa', 'ampara', 'trincomalee',
-      'kurunegala', 'puttalam', 'kalutara', 'ratnapura', 'kegalle', 'nuwara eliya',
-      'badulla', 'monaragala', 'kilinochchi', 'mannar', 'vavuniya', 'mullaitivu', 'matale'
-    ].forEach(district => {
-      if (summary.includes(district)) {
-        const capitalizedDistrict = district.charAt(0).toUpperCase() + district.slice(1);
-        districtAlertCounts[capitalizedDistrict] = (districtAlertCounts[capitalizedDistrict] || 0) + 1;
+    const matchedDistricts = new Set<string>();
+
+    // Check for direct district mentions
+    allDistricts.forEach(district => {
+      if (summary.includes(district.toLowerCase())) {
+        matchedDistricts.add(district);
       }
+    });
+
+    // Check for province mentions and add their districts
+    for (const [province, districts] of Object.entries(provinceToDistricts)) {
+      if (summary.includes(province)) {
+        districts.forEach(d => matchedDistricts.add(d));
+      }
+    }
+
+    // Count for each matched district
+    matchedDistricts.forEach(district => {
+      districtAlertCounts[district] = (districtAlertCounts[district] || 0) + 1;
     });
   });
 
