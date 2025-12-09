@@ -28,13 +28,13 @@ const StockPredictions = () => {
       event.summary.toLowerCase().includes('negative');
 
     return {
-      id: event.id || `market-${Math.random().toString(36).substr(2, 9)}`,
+      id: event.event_id || `market-${Math.random().toString(36).substr(2, 9)}`,
       title: event.summary,
       sentiment: isBullish ? 'bullish' : isBearish ? 'bearish' : 'neutral',
       confidence: event.confidence || 0.7,
       severity: event.severity,
       timestamp: event.timestamp,
-      source: event.source_tool || 'Market Analysis'
+      source: event.domain || 'Market Analysis'
     };
   });
 
@@ -69,8 +69,8 @@ const StockPredictions = () => {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   className={`p-4 rounded-lg border-l-4 ${insight.sentiment === 'bullish' ? 'border-l-success bg-success/10' :
-                      insight.sentiment === 'bearish' ? 'border-l-destructive bg-destructive/10' :
-                        'border-l-muted bg-muted/30'
+                    insight.sentiment === 'bearish' ? 'border-l-destructive bg-destructive/10' :
+                      'border-l-muted bg-muted/30'
                     }`}
                 >
                   <div className="flex items-center gap-2 mb-2">
@@ -78,8 +78,8 @@ const StockPredictions = () => {
                     {insight.sentiment === 'bearish' && <TrendingDown className="w-4 h-4 text-destructive" />}
                     {insight.sentiment === 'neutral' && <Activity className="w-4 h-4 text-muted-foreground" />}
                     <Badge className={`text-xs ${insight.sentiment === 'bullish' ? 'bg-success/20 text-success' :
-                        insight.sentiment === 'bearish' ? 'bg-destructive/20 text-destructive' :
-                          'bg-muted'
+                      insight.sentiment === 'bearish' ? 'bg-destructive/20 text-destructive' :
+                        'bg-muted'
                       }`}>
                       {insight.sentiment.toUpperCase()}
                     </Badge>
