@@ -659,8 +659,7 @@ JSON only:"""
             {"route": "END"} to complete this cycle
         """
         logger.info("[DataRefreshRouter] Cycle complete. Returning END (non-blocking).")
-        
+
         # Return END to complete this graph cycle
         # The 60-second scheduling is handled by the caller in main.py
         return {"route": "END"}
-

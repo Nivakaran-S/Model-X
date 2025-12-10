@@ -684,7 +684,6 @@ Source: Multi-platform competitive intelligence (Twitter, Facebook, LinkedIn, In
         """
         print("[MODULE 4] Aggregating and Storing Feeds")
 
-
         # Initialize database managers
         neo4j_manager = Neo4jManager()
         chroma_manager = ChromaDBManager()

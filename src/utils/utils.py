@@ -297,9 +297,7 @@ def load_playwright_storage_state_path(
     logger.warning(f"  1. {src_utils_path}")
     logger.warning(f"  2. {cwd_path}")
     logger.warning(f"  3. {root_path}")
-    logger.warning(
-        "\n💡 Run 'python src/utils/session_manager.py' to create sessions."
-    )
+    logger.warning("\n💡 Run 'python src/utils/session_manager.py' to create sessions.")
     return None
 
 
