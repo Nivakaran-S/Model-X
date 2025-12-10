@@ -170,7 +170,7 @@ export default function HistoricalIntel() {
                     How Climate Has Changed
                 </h4>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto intel-scrollbar">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-border">
@@ -221,8 +221,8 @@ export default function HistoricalIntel() {
                         <Badge
                             key={idx}
                             className={`${period.risk === 'high'
-                                    ? 'bg-destructive/20 text-destructive'
-                                    : 'bg-warning/20 text-warning'
+                                ? 'bg-destructive/20 text-destructive'
+                                : 'bg-warning/20 text-warning'
                                 }`}
                         >
                             {period.months}: {period.type}

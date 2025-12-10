@@ -305,11 +305,58 @@ export function useRogerData() {
     return () => clearInterval(interval);
   }, [fetchRiverData]);
 
+  // ============================================
+  // SITUATIONAL AWARENESS DATA (NEW)
+  // ============================================
+  const [powerData, setPowerData] = useState<Record<string, unknown> | null>(null);
+  const [fuelData, setFuelData] = useState<Record<string, unknown> | null>(null);
+  const [economyData, setEconomyData] = useState<Record<string, unknown> | null>(null);
+  const [healthData, setHealthData] = useState<Record<string, unknown> | null>(null);
+  const [commodityData, setCommodityData] = useState<Record<string, unknown> | null>(null);
+  const [waterData, setWaterData] = useState<Record<string, unknown> | null>(null);
+
+  // Fetch situational awareness data
+  const fetchSituationalData = useCallback(async () => {
+    try {
+      const [powerRes, fuelRes, economyRes, healthRes, commodityRes, waterRes] = await Promise.all([
+        fetch(`${API_BASE}/api/power`).catch(() => null),
+        fetch(`${API_BASE}/api/fuel`).catch(() => null),
+        fetch(`${API_BASE}/api/economy`).catch(() => null),
+        fetch(`${API_BASE}/api/health`).catch(() => null),
+        fetch(`${API_BASE}/api/commodities`).catch(() => null),
+        fetch(`${API_BASE}/api/water`).catch(() => null),
+      ]);
+
+      if (powerRes?.ok) setPowerData(await powerRes.json());
+      if (fuelRes?.ok) setFuelData(await fuelRes.json());
+      if (economyRes?.ok) setEconomyData(await economyRes.json());
+      if (healthRes?.ok) setHealthData(await healthRes.json());
+      if (commodityRes?.ok) setCommodityData(await commodityRes.json());
+      if (waterRes?.ok) setWaterData(await waterRes.json());
+    } catch (err) {
+      console.warn('[Roger] Failed to fetch situational data:', err);
+    }
+  }, []);
+
+  // Fetch situational data periodically (every 5 minutes)
+  useEffect(() => {
+    fetchSituationalData();
+    const interval = setInterval(fetchSituationalData, 300000); // Every 5 min
+    return () => clearInterval(interval);
+  }, [fetchSituationalData]);
+
   return {
     ...state,
     isConnected,
     events: state.final_ranked_feed,
     dashboard: state.risk_dashboard_snapshot,
-    riverData  // NEW: Expose river data for RiverNetStatus component
+    riverData,
+    // NEW: Situational awareness data
+    powerData,
+    fuelData,
+    economyData,
+    healthData,
+    commodityData,
+    waterData,
   };
 }

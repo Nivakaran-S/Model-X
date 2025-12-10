@@ -4,10 +4,28 @@ import { Badge } from "../ui/badge";
 import { useRogerData } from "../../hooks/use-roger-data";
 import { motion } from "framer-motion";
 import RiverNetStatus from "./RiverNetStatus";
+import PowerOutageStatus from "./PowerOutageStatus";
+import FuelPriceMonitor from "./FuelPriceMonitor";
+import EconomicIndicators from "./EconomicIndicators";
+import HealthAlerts from "./HealthAlerts";
+import CommodityPrices from "./CommodityPrices";
+import WaterSupplyStatus from "./WaterSupplyStatus";
 
 const DashboardOverview = () => {
-  // Get riverData directly from hook (fetched via /api/rivernet)
-  const { dashboard, events, isConnected, status, riverData } = useRogerData();
+  // Get data from hook (fetched via various /api/ endpoints)
+  const {
+    dashboard,
+    events,
+    isConnected,
+    status,
+    riverData,
+    powerData,
+    fuelData,
+    economyData,
+    healthData,
+    commodityData,
+    waterData,
+  } = useRogerData();
 
   // Safety check: ensure events is always an array
   const safeEvents = events || [];
@@ -126,6 +144,18 @@ const DashboardOverview = () => {
       {/* RiverNet Flood Monitoring */}
       <RiverNetStatus riverData={riverData} compact={false} />
 
+      {/* Situational Awareness Grid - NEW */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <PowerOutageStatus powerData={powerData} />
+        <FuelPriceMonitor fuelData={fuelData} />
+        <EconomicIndicators economyData={economyData} />
+        <HealthAlerts healthData={healthData} />
+        <CommodityPrices commodityData={commodityData} />
+        <WaterSupplyStatus waterData={waterData} />
+      </div>
+
+
+
       {/* Live Intelligence Feed - SORTED BY LATEST FIRST */}
       <Card className="p-6 bg-card border-border">
         <h3 className="font-bold mb-4 flex items-center gap-2">
@@ -134,7 +164,7 @@ const DashboardOverview = () => {
           <span className="text-xs text-muted-foreground ml-2">(Latest First)</span>
           <Badge className="ml-auto">{sortedEvents.length} Events</Badge>
         </h3>
-        <div className="space-y-3 max-h-[500px] overflow-y-auto">
+        <div className="space-y-3 max-h-[500px] overflow-y-auto intel-scrollbar pr-2">
           {sortedEvents.slice(0, 10).map((event, idx) => {
             const isRisk = event.impact_type === 'risk';
             const isFlood = event.category === 'flood_monitoring' || event.category === 'flood_alert';

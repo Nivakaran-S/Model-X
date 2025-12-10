@@ -32,9 +32,7 @@ class StorageManager:
     """
 
     def __init__(self):
-        logger.info("=" * 80)
         logger.info("[StorageManager] Initializing multi-database storage system")
-        logger.info("=" * 80)
 
         # Initialize all storage backends
         self.sqlite_cache = SQLiteCache()
@@ -50,11 +48,7 @@ class StorageManager:
             "errors": 0,
         }
 
-        config_summary = config.get_config_summary()
-        for key, value in config_summary.items():
-            logger.info(f"  {key}: {value}")
-
-        logger.info("=" * 80)
+        logger.info("[StorageManager] Configuration loaded")
 
     def is_duplicate(
         self, summary: str, threshold: Optional[float] = None

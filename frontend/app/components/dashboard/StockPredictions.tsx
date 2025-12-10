@@ -146,7 +146,7 @@ const StockPredictions = () => {
             </button>
           </div>
         ) : stocks.length > 0 ? (
-          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+          <div className="space-y-2 max-h-[400px] overflow-y-auto intel-scrollbar pr-2">
             {stocks.map((stock, idx) => (
               <motion.div
                 key={stock.symbol}
@@ -212,7 +212,7 @@ const StockPredictions = () => {
         </div>
 
         {marketEvents.length > 0 ? (
-          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+          <div className="space-y-2 max-h-[200px] overflow-y-auto intel-scrollbar pr-2">
             {marketEvents.slice(0, 5).map((event, idx) => (
               <motion.div
                 key={event.event_id || idx}

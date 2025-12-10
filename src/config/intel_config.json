@@ -1,23 +1,33 @@
 {
   "user_profiles": {
     "twitter": [
-      "nivakaran"
+      "nivakaran",
+      "iit",
+      "model-x"
     ],
     "facebook": [
-      "Nivakaran"
+      "Nivakaran",
+      "iit",
+      "sliit"
     ],
     "linkedin": [
-      "nivakaran"
+      "nivakaran",
+      "ieee",
+      "sliit",
+      "albert"
     ]
   },
   "user_keywords": [
     "Colombo",
     "nivakaran",
-    "telco"
+    "model-x",
+    "Colombo port"
   ],
   "user_products": [
     "iphone",
-    "anchor"
+    "anchor",
+    "iphone xr",
+    "iphone 13 pro"
   ],
   "operational_keywords": {
     "infrastructure": [

@@ -132,7 +132,7 @@ const AnomalyDetection = () => {
             <Separator className="mb-4" />
 
             {/* Anomalies List */}
-            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+            <div className="space-y-3 max-h-[500px] overflow-y-auto intel-scrollbar pr-2">
                 {loading && anomalies.length === 0 ? (
                     <div className="text-center py-8">
                         <RefreshCw className="w-8 h-8 mx-auto animate-spin text-primary mb-3" />

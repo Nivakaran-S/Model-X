@@ -146,7 +146,7 @@ const DistrictInfoPanel = ({ district }: DistrictInfoPanelProps) => {
         exit={{ opacity: 0, x: -20 }}
         transition={{ duration: 0.3 }}
       >
-        <Card className="p-4 sm:p-6 bg-card border-border space-y-4 max-h-[60vh] sm:max-h-none overflow-y-auto hide-scrollbar">
+        <Card className="p-4 sm:p-6 bg-card border-border space-y-4 max-h-[60vh] sm:max-h-none overflow-y-auto intel-scrollbar">
           {/* Header */}
           <div className="sticky top-0 bg-card z-10 pb-2 border-b border-border/50">
             <div className="flex items-center justify-between mb-2">

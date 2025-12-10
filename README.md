@@ -525,8 +525,8 @@ python main.py --mode train --epochs 100
 ```
 ┌─────────────────────────────────────────────────┐
 │ MultiCollectionRetriever                         │
-│ - Connects to ALL ChromaDB collections          │
-│ - Roger_feeds, Roger_rag_collection, etc.     │
+│ - Connects to ChromaDB intelligence collection  │
+│ - Roger_feeds (all agent domain feeds)          │
 └─────────────────┬───────────────────────────────┘
                   │
                   ▼

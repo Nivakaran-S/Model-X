@@ -122,8 +122,8 @@ export default function CurrencyPrediction() {
                     {/* Main Prediction Card */}
                     <div
                         className={`p-6 rounded-xl border mb-6 ${prediction.expected_change_pct < 0
-                                ? "bg-green-500/10 border-green-500/30"
-                                : "bg-red-500/10 border-red-500/30"
+                            ? "bg-green-500/10 border-green-500/30"
+                            : "bg-red-500/10 border-red-500/30"
                             }`}
                     >
                         <div className="grid grid-cols-3 gap-4 text-center">
@@ -153,8 +153,8 @@ export default function CurrencyPrediction() {
                                 <span className="text-slate-400">Expected Change: </span>
                                 <span
                                     className={`font-bold ${prediction.expected_change_pct < 0
-                                            ? "text-green-400"
-                                            : "text-red-400"
+                                        ? "text-green-400"
+                                        : "text-red-400"
                                         }`}
                                 >
                                     {prediction.expected_change_pct > 0 ? "+" : ""}
@@ -223,12 +223,6 @@ export default function CurrencyPrediction() {
                         </div>
                     )}
 
-                    {/* Fallback Warning */}
-                    {prediction.is_fallback && (
-                        <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm text-yellow-400">
-                            ⚠️ Using fallback model. Run training for accurate predictions.
-                        </div>
-                    )}
 
                     {/* Footer */}
                     <div className="mt-4 text-xs text-slate-500 text-center">

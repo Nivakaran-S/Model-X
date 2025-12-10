@@ -767,6 +767,149 @@ def get_national_threat_score():
             "error": str(e)
         }
 
+# ============================================
+# SITUATIONAL AWARENESS API ENDPOINTS (NEW)
+# ============================================
+
+@app.get("/api/power")
+def get_power_status():
+    """
+    Get CEB power outage / load shedding status.
+    
+    Returns current power supply status, active load shedding schedules,
+    and any CEB announcements.
+    """
+    try:
+        from src.utils.utils import tool_ceb_power_status
+        power_data = tool_ceb_power_status()
+        return {
+            "status": "success",
+            **power_data
+        }
+    except Exception as e:
+        logger.error(f"[API] Error fetching power status: {e}")
+        return {
+            "status": "error",
+            "load_shedding_active": False,
+            "error": str(e)
+        }
+
+
+@app.get("/api/fuel")
+def get_fuel_prices():
+    """
+    Get current fuel prices in Sri Lanka.
+    
+    Returns prices for Petrol 92/95, Diesel, Super Diesel, and Kerosene.
+    """
+    try:
+        from src.utils.utils import tool_fuel_prices
+        fuel_data = tool_fuel_prices()
+        return {
+            "status": "success",
+            **fuel_data
+        }
+    except Exception as e:
+        logger.error(f"[API] Error fetching fuel prices: {e}")
+        return {
+            "status": "error",
+            "prices": {},
+            "error": str(e)
+        }
+
+
+@app.get("/api/economy")
+def get_economic_indicators():
+    """
+    Get key economic indicators from CBSL.
+    
+    Returns inflation rates, policy rates, exchange rates, and forex reserves.
+    """
+    try:
+        from src.utils.utils import tool_cbsl_indicators
+        economy_data = tool_cbsl_indicators()
+        return {
+            "status": "success",
+            **economy_data
+        }
+    except Exception as e:
+        logger.error(f"[API] Error fetching economic indicators: {e}")
+        return {
+            "status": "error",
+            "indicators": {},
+            "error": str(e)
+        }
+
+
+@app.get("/api/health")
+def get_health_alerts():
+    """
+    Get health alerts and disease information.
+    
+    Returns current health alerts, dengue case data, and health advisories.
+    """
+    try:
+        from src.utils.utils import tool_health_alerts
+        health_data = tool_health_alerts()
+        return {
+            "status": "success",
+            **health_data
+        }
+    except Exception as e:
+        logger.error(f"[API] Error fetching health data: {e}")
+        return {
+            "status": "error",
+            "alerts": [],
+            "dengue": {},
+            "error": str(e)
+        }
+
+
+@app.get("/api/commodities")
+def get_commodity_prices():
+    """
+    Get prices for essential commodities.
+    
+    Returns current prices for rice, sugar, dhal, milk powder, and other staples.
+    """
+    try:
+        from src.utils.utils import tool_commodity_prices
+        commodity_data = tool_commodity_prices()
+        return {
+            "status": "success",
+            **commodity_data
+        }
+    except Exception as e:
+        logger.error(f"[API] Error fetching commodity prices: {e}")
+        return {
+            "status": "error",
+            "commodities": [],
+            "error": str(e)
+        }
+
+
+@app.get("/api/water")
+def get_water_supply_status():
+    """
+    Get water supply disruption alerts from NWSDB.
+    
+    Returns active disruptions, affected areas, and restoration estimates.
+    """
+    try:
+        from src.utils.utils import tool_water_supply_alerts
+        water_data = tool_water_supply_alerts()
+        return {
+            "status": "success",
+            **water_data
+        }
+    except Exception as e:
+        logger.error(f"[API] Error fetching water status: {e}")
+        return {
+            "status": "error",
+            "active_disruptions": [],
+            "error": str(e)
+        }
+
 
 # NOTE: Weather predictions endpoint moved to async version below (line ~1540)
 # NOTE: Currency prediction endpoint moved to async version below (line ~1680)

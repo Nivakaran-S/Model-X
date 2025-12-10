@@ -163,7 +163,7 @@ export default function WeatherPredictions() {
                     </div>
 
                     {/* District Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto pr-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto intel-scrollbar pr-2">
                         {filteredDistricts.map(([district, pred]) => (
                             <div
                                 key={district}
@@ -213,11 +213,6 @@ export default function WeatherPredictions() {
                                             <span className="text-slate-400">Station:</span>
                                             <span className="text-white">{pred.station_used}</span>
                                         </div>
-                                        {pred.is_fallback && (
-                                            <div className="text-xs text-yellow-400">
-                                                ⚠️ Using climate fallback (LSTM model not trained)
-                                            </div>
-                                        )}
                                     </div>
                                 )}
                             </div>

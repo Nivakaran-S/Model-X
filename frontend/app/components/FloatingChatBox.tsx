@@ -169,7 +169,7 @@ const FloatingChatBox = () => {
                 </div>
 
                 {/* Domain Filter - scrollable on mobile */}
-                <div className="flex gap-1.5 sm:gap-1 px-3 sm:px-4 py-3 bg-[#1a1a1a] border-b border-[#373435] overflow-x-auto sm:flex-wrap hide-scrollbar">
+                <div className="flex gap-1.5 sm:gap-1 px-3 sm:px-4 py-3 bg-[#1a1a1a] border-b border-[#373435] overflow-x-auto sm:flex-wrap intel-scrollbar">
                     <Badge
                         className={`cursor-pointer text-xs sm:text-xs whitespace-nowrap px-3 py-1.5 sm:px-2 sm:py-1 transition-colors touch-manipulation ${!domainFilter ? 'bg-green-500 text-white' : 'bg-[#373435] text-gray-300 hover:bg-[#4a4a4a] active:bg-[#555]'}`}
                         onClick={() => setDomainFilter(null)}
