@@ -51,7 +51,7 @@ const HealthAlerts = ({ healthData }: HealthAlertsProps) => {
                         <p className="text-xs text-muted-foreground">weekly avg</p>
                     </div>
                 </div>
-                {dengue.high_risk_districts && (
+                {Array.isArray(dengue.high_risk_districts) && dengue.high_risk_districts.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                         {(dengue.high_risk_districts as string[]).slice(0, 3).map((district: string, idx: number) => (
                             <Badge key={idx} variant="outline" className="text-xs">
