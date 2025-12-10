@@ -5,64 +5,75 @@ import numpy as np
 Defining common constant variable for training pipeline
 """
 
-# Stocks available on Yahoo Finance for training
-# NOTE: CSE (Sri Lanka) tickers are NOT available on Yahoo Finance
-# Using globally available tickers instead
+# Top 10 Sri Lankan Stocks by market cap (CSE - Colombo Stock Exchange)
+# NOTE: Yahoo Finance does NOT support CSE tickers directly.
+# These stocks will use fallback predictions with simulated market data.
+# For real CSE data, integrate with CSE API or data providers like Bloomberg.
 STOCKS_TO_TRAIN = {
-    "AAPL": {
-        "yahoo_symbol": "AAPL",
-        "name": "Apple Inc.",
-        "sector": "Technology"
+    "COMB": {
+        "yahoo_symbol": "COMB.N0000",  # Commercial Bank of Ceylon
+        "name": "Commercial Bank of Ceylon PLC",
+        "sector": "Banking",
+        "exchange": "CSE"
     },
-    "GOOGL": {
-        "yahoo_symbol": "GOOGL",
-        "name": "Alphabet Inc.",
-        "sector": "Technology"
+    "JKH": {
+        "yahoo_symbol": "JKH.N0000",  # John Keells Holdings
+        "name": "John Keells Holdings PLC",
+        "sector": "Diversified Holdings",
+        "exchange": "CSE"
     },
-    "MSFT": {
-        "yahoo_symbol": "MSFT",
-        "name": "Microsoft Corporation",
-        "sector": "Technology"
+    "SAMP": {
+        "yahoo_symbol": "SAMP.N0000",  # Sampath Bank
+        "name": "Sampath Bank PLC",
+        "sector": "Banking",
+        "exchange": "CSE"
     },
-    "AMZN": {
-        "yahoo_symbol": "AMZN",
-        "name": "Amazon.com Inc.",
-        "sector": "Consumer Discretionary"
+    "HNB": {
+        "yahoo_symbol": "HNB.N0000",  # Hatton National Bank
+        "name": "Hatton National Bank PLC",
+        "sector": "Banking",
+        "exchange": "CSE"
     },
-    "META": {
-        "yahoo_symbol": "META",
-        "name": "Meta Platforms Inc.",
-        "sector": "Technology"
+    "DIAL": {
+        "yahoo_symbol": "DIAL.N0000",  # Dialog Axiata
+        "name": "Dialog Axiata PLC",
+        "sector": "Telecommunications",
+        "exchange": "CSE"
     },
-    "NVDA": {
-        "yahoo_symbol": "NVDA",
-        "name": "NVIDIA Corporation",
-        "sector": "Technology"
+    "CTC": {
+        "yahoo_symbol": "CTC.N0000",  # Ceylon Tobacco
+        "name": "Ceylon Tobacco Company PLC",
+        "sector": "Consumer Goods",
+        "exchange": "CSE"
     },
-    "TSLA": {
-        "yahoo_symbol": "TSLA",
-        "name": "Tesla Inc.",
-        "sector": "Automotive"
+    "NEST": {
+        "yahoo_symbol": "NEST.N0000",  # Nestle Lanka
+        "name": "Nestle Lanka PLC",
+        "sector": "Consumer Goods",
+        "exchange": "CSE"
     },
-    "JPM": {
-        "yahoo_symbol": "JPM",
-        "name": "JPMorgan Chase & Co.",
-        "sector": "Financial Services"
+    "CARG": {
+        "yahoo_symbol": "CARG.N0000",  # Cargills Ceylon
+        "name": "Cargills Ceylon PLC",
+        "sector": "Retail",
+        "exchange": "CSE"
     },
-    "V": {
-        "yahoo_symbol": "V",
-        "name": "Visa Inc.",
-        "sector": "Financial Services"
+    "HNBA": {
+        "yahoo_symbol": "HNBA.N0000",  # HNB Assurance
+        "name": "HNB Assurance PLC",
+        "sector": "Insurance",
+        "exchange": "CSE"
     },
-    "JNJ": {
-        "yahoo_symbol": "JNJ",
-        "name": "Johnson & Johnson",
-        "sector": "Healthcare"
+    "CARS": {
+        "yahoo_symbol": "CARS.N0000",  # Carson Cumberbatch
+        "name": "Carson Cumberbatch PLC",
+        "sector": "Diversified Holdings",
+        "exchange": "CSE"
     }
 }
 
 # Default stock for single-stock training mode
-DEFAULT_STOCK = "AAPL"
+DEFAULT_STOCK = "COMB"
 
 # Legacy alias for backward compatibility
 SRI_LANKA_STOCKS = STOCKS_TO_TRAIN

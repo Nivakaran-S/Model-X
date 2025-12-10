@@ -89,7 +89,7 @@ const StockPredictions = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-success" />
-            <h2 className="text-lg font-bold">STOCK PREDICTIONS - ML MODELS</h2>
+            <h2 className="text-lg font-bold">CSE STOCK PREDICTIONS 🇱🇰</h2>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -165,7 +165,7 @@ const StockPredictions = () => {
                   </div>
                   <div className="text-right">
                     <div className="font-mono text-lg">
-                      ${stock.predicted_price?.toFixed(2) || '---'}
+                      LKR {stock.predicted_price?.toFixed(2) || '---'}
                     </div>
                     <div className={`text-sm font-mono ${stock.expected_change_pct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {stock.expected_change_pct >= 0 ? '+' : ''}{stock.expected_change_pct?.toFixed(2) || '0.00'}%

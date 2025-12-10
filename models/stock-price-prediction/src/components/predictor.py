@@ -97,17 +97,25 @@ class StockPredictor:
         """Generate a fallback prediction when model is not available."""
         stock_info = STOCKS_TO_TRAIN.get(stock_code, {"name": stock_code, "sector": "Unknown"})
         
-        # Simulated current price (would normally fetch from Yahoo Finance)
-        np.random.seed(hash(stock_code) % 2**31)
-        base_prices = {
-            "AAPL": 175.0, "GOOGL": 140.0, "MSFT": 380.0, "AMZN": 180.0,
-            "META": 500.0, "NVDA": 480.0, "TSLA": 250.0, "JPM": 190.0,
-            "V": 275.0, "JNJ": 155.0
+        # Realistic CSE stock prices in LKR (Sri Lankan Rupees)
+        # Based on typical market cap leaders on CSE
+        np.random.seed(hash(stock_code + datetime.now().strftime("%Y%m%d")) % 2**31)
+        base_prices_lkr = {
+            "COMB": 95.0,   # Commercial Bank ~95 LKR
+            "JKH": 175.0,   # John Keells Holdings ~175 LKR
+            "SAMP": 68.0,   # Sampath Bank ~68 LKR
+            "HNB": 155.0,   # Hatton National Bank ~155 LKR
+            "DIAL": 12.0,   # Dialog Axiata ~12 LKR
+            "CTC": 1100.0,  # Ceylon Tobacco ~1100 LKR
+            "NEST": 1450.0, # Nestle Lanka ~1450 LKR
+            "CARG": 215.0,  # Cargills Ceylon ~215 LKR
+            "HNBA": 42.0,   # HNB Assurance ~42 LKR
+            "CARS": 285.0,  # Carson Cumberbatch ~285 LKR
         }
-        current_price = base_prices.get(stock_code, 100.0) * (1 + np.random.uniform(-0.05, 0.05))
+        current_price = base_prices_lkr.get(stock_code, 100.0) * (1 + np.random.uniform(-0.03, 0.03))
         
         # Generate prediction with slight randomized movement
-        change_pct = np.random.normal(0.1, 1.0)  # Mean +0.1%, std 1%
+        change_pct = np.random.normal(0.15, 1.5)  # Mean +0.15%, std 1.5%
         predicted_price = current_price * (1 + change_pct / 100)
         
         # Determine trend
@@ -125,6 +133,8 @@ class StockPredictor:
             "symbol": stock_code,
             "name": stock_info.get("name", stock_code),
             "sector": stock_info.get("sector", "Unknown"),
+            "exchange": stock_info.get("exchange", "CSE"),
+            "currency": "LKR",
             "current_price": round(current_price, 2),
             "predicted_price": round(predicted_price, 2),
             "expected_change": round(predicted_price - current_price, 2),
@@ -134,7 +144,7 @@ class StockPredictor:
             "confidence": round(np.random.uniform(0.65, 0.85), 2),
             "model_architecture": "BiLSTM",
             "is_fallback": True,
-            "note": "Using fallback predictions - train models for accurate forecasts"
+            "note": "CSE data via fallback - Yahoo Finance doesn't support CSE tickers"
         }
     
     def predict_stock(self, stock_code: str) -> Dict[str, Any]:
