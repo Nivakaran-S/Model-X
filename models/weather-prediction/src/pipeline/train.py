@@ -23,16 +23,16 @@ if __name__ == "__main__":
     parser.add_argument("--station", type=str, default=None, help="Station to train (e.g., COLOMBO)")
     parser.add_argument("--epochs", type=int, default=100, help="Training epochs")
     parser.add_argument("--full", action="store_true", help="Run full pipeline (ingest + train + predict)")
-    
+
     args = parser.parse_args()
-    
+
     # Import from main.py (after path setup)
     from main import run_training, run_full_pipeline, run_data_ingestion
-    
+
     print("=" * 60)
     print("WEATHER PREDICTION - TRAINING PIPELINE")
     print("=" * 60)
-    
+
     if args.full:
         run_full_pipeline()
     else:
@@ -45,10 +45,10 @@ if __name__ == "__main__":
         except FileNotFoundError:
             print("No existing data, running ingestion first...")
             run_data_ingestion(months=3)
-        
+
         # Run training
         run_training(station=args.station, epochs=args.epochs)
-    
+
     print("=" * 60)
     print("TRAINING COMPLETE!")
     print("=" * 60)

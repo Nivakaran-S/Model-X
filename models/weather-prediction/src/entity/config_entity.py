@@ -75,15 +75,15 @@ DISTRICT_TO_STATION = {
 class DataIngestionConfig:
     """Configuration for weather data ingestion"""
     tutiempo_base_url: str = "https://en.tutiempo.net/climate"
-    
+
     # Number of months of historical data to fetch
     months_to_fetch: int = int(os.getenv("WEATHER_MONTHS_HISTORY", "12"))
-    
+
     # Output paths
     raw_data_dir: str = field(default_factory=lambda: str(
         Path(__file__).parent.parent.parent / "artifacts" / "data"
     ))
-    
+
     # Stations to fetch
     stations: Dict = field(default_factory=lambda: WEATHER_STATIONS)
 
@@ -95,19 +95,19 @@ class ModelTrainerConfig:
     sequence_length: int = 30  # Days of history to use
     lstm_units: List[int] = field(default_factory=lambda: [64, 32])
     dropout_rate: float = 0.2
-    
+
     # Training parameters
     epochs: int = 100
     batch_size: int = 32
     validation_split: float = 0.2
     early_stopping_patience: int = 10
-    
+
     # MLflow config
     mlflow_tracking_uri: str = field(default_factory=lambda: os.getenv(
         "MLFLOW_TRACKING_URI", "https://dagshub.com/sliitguy/modelx.mlflow"
     ))
     experiment_name: str = "weather_prediction_lstm"
-    
+
     # Output
     models_dir: str = field(default_factory=lambda: str(
         Path(__file__).parent.parent.parent / "artifacts" / "models"
@@ -121,11 +121,11 @@ class PredictionConfig:
     predictions_dir: str = field(default_factory=lambda: str(
         Path(__file__).parent.parent.parent / "output" / "predictions"
     ))
-    
+
     # Districts
     districts: List[str] = field(default_factory=lambda: SRI_LANKA_DISTRICTS)
     district_to_station: Dict = field(default_factory=lambda: DISTRICT_TO_STATION)
-    
+
     # Severity thresholds
     critical_rain_mm: float = 100.0
     warning_rain_mm: float = 50.0

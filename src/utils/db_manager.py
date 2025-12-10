@@ -443,6 +443,30 @@ def extract_post_data(
             or raw_post.get("description")
             or ""
         )
+
+        # ENHANCED: Handle gazette extracted_content field (PDF text)
+        # This ensures PDF content flows into RAG for proper indexing
+        extracted_content = raw_post.get("extracted_content", [])
+        if extracted_content and isinstance(extracted_content, list):
+            # Combine all extracted PDF content
+            pdf_texts = []
+            for item in extracted_content:
+                if isinstance(item, dict) and item.get("content"):
+                    content = item.get("content", "")
+                    if content and not content.startswith("["):  # Skip error messages
+                        pdf_texts.append(content)
+
+            if pdf_texts:
+                # Prepend PDF content to text for better RAG search
+                combined_pdf = "\n\n".join(pdf_texts)
+                if text:
+                    text = f"{combined_pdf}\n\n{text}"
+                else:
+                    text = combined_pdf
+
+        # Also check for summary field (gazette entries have this)
+        if not text and raw_post.get("summary"):
+            text = raw_post.get("summary", "")
         title = raw_post.get("title") or raw_post.get("headline") or ""
         post_url = (
             raw_post.get("url")
@@ -482,7 +506,7 @@ def extract_post_data(
             "poster": poster[:200],  # Limit length
             "post_url": post_url,
             "title": title[:500],  # Limit length
-            "text": text[:2000],  # Limit length
+            "text": text,  # Full text - ChromaDB splitter handles chunking
             "content_hash": content_hash,
             "engagement": engagement,
             "source_tool": source_tool,

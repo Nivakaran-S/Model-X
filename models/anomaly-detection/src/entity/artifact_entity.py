@@ -48,19 +48,19 @@ class ModelTrainerArtifact:
     best_model_name: str
     best_model_path: str
     best_model_metrics: Dict[str, float]
-    
+
     # All trained models
     trained_models: List[Dict[str, Any]]
-    
+
     # MLflow tracking
     mlflow_run_id: str
     mlflow_experiment_id: str
-    
+
     # Cluster/anomaly results
     n_clusters: Optional[int]
     n_anomalies: Optional[int]
     anomaly_indices: Optional[List[int]]
-    
+
     # Training info
     training_duration_seconds: float
     optuna_study_name: Optional[str]

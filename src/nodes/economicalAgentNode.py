@@ -9,7 +9,7 @@ Each agent instance gets its own private set of tools.
 
 import json
 import uuid
-from typing import List, Dict, Any
+from typing import Dict, Any
 from datetime import datetime
 from src.states.economicalAgentState import EconomicalAgentState
 from src.utils.tool_factory import create_tool_set
@@ -398,7 +398,7 @@ class EconomicalAgentNode:
                 elif category == "national":
                     national_data.extend(posts[:10])
 
-            except Exception as e:
+            except Exception:
                 continue
 
         # Create structured feeds
@@ -784,7 +784,7 @@ Source: Multi-platform aggregation (Twitter, Facebook, LinkedIn, Instagram, Redd
         neo4j_manager.close()
 
         # Print statistics
-        print(f"\n  📊 AGGREGATION STATISTICS")
+        print("\n  📊 AGGREGATION STATISTICS")
         print(f"  Total Posts Processed: {total_posts}")
         print(f"  Unique Posts: {unique_posts}")
         print(f"  Duplicate Posts: {duplicate_posts}")
@@ -799,7 +799,7 @@ Source: Multi-platform aggregation (Twitter, Facebook, LinkedIn, Instagram, Redd
             chroma_manager.get_document_count() if chroma_manager.collection else 0
         )
 
-        print(f"\n  💾 DATABASE TOTALS")
+        print("\n  💾 DATABASE TOTALS")
         print(f"  Neo4j Total Posts: {neo4j_total}")
         print(f"  ChromaDB Total Docs: {chroma_total}")
 

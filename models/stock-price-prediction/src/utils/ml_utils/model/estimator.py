@@ -13,7 +13,7 @@ class StockModel:
             self.model = model
         except Exception as e:
             raise StockPriceException(e,sys)
-    
+
     def predict(self,x):
         try:
             # We assume x is raw data that needs transformation
@@ -21,17 +21,17 @@ class StockModel:
             # So this wrapper needs to handle reshaping if it's employed for inference.
             # Assuming x comes in as 2D dataframe/array.
             x_transform = self.preprocessor.transform(x)
-            
+
             # Reshape for LSTM: [samples, time steps, features]
             # This logic mimics DataTransformation.create_dataset but for inference
             # We assume x has enough data for at least one sequence or is pre-sequenced?
-            # Standard estimator usually expects prepared X. 
+            # Standard estimator usually expects prepared X.
             # If this wrapper is used for the API, it must handle the sliding window logic.
-            # For now, we will simply delegate to model.predict assuming input is correct shape, 
+            # For now, we will simply delegate to model.predict assuming input is correct shape,
             # or IF the preprocessor output is flat, we might fail.
             # Given the constraints, I will keep it simple: transform and predict.
             # If shape mismatch occurs, it's an inference data prep issue.
-            
+
             y_hat = self.model.predict(x_transform)
             return y_hat
         except Exception as e:

@@ -146,6 +146,54 @@
     display: none;
   }
 
+  /* Sleek custom scrollbar for Intel Feed */
+  .intel-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.5) transparent;
+  }
+
+  .intel-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .intel-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+  }
+
+  .intel-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.3);
+    border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  .intel-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.6);
+  }
+
+  /* Roger dark scrollbar for chatbox */
+  .roger-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(0 0% 40%) transparent;
+  }
+
+  .roger-scrollbar::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  .roger-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .roger-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(0 0% 35%);
+    border-radius: 2.5px;
+  }
+
+  .roger-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(0 0% 50%);
+  }
+
   /* Mobile touch optimization */
   .touch-manipulation {
     touch-action: manipulation;

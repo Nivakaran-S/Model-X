@@ -18,7 +18,7 @@ from .artifact_entity import (
 
 __all__ = [
     "DataIngestionConfig",
-    "DataValidationConfig", 
+    "DataValidationConfig",
     "DataTransformationConfig",
     "ModelTrainerConfig",
     "PipelineConfig",

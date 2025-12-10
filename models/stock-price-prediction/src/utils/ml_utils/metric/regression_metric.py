@@ -14,8 +14,8 @@ def get_regression_score(y_true, y_pred) -> RegressionMetricArtifact:
         model_mape = mean_absolute_percentage_error(y_true, y_pred)
 
         regression_metric = RegressionMetricArtifact(
-            rmse=model_rmse, 
-            mae=model_mae, 
+            rmse=model_rmse,
+            mae=model_mae,
             r2_score=model_r2,
             mape=model_mape
         )

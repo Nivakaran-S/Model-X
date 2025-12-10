@@ -201,7 +201,7 @@ class MultiCollectionRetriever:
                 count = collection.count()
                 stats["collections"][name] = count
                 stats["total_documents"] += count
-            except:
+            except Exception:
                 stats["collections"][name] = "error"
 
         return stats

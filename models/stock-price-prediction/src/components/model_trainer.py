@@ -44,22 +44,22 @@ class ModelTrainer:
             model = Sequential()
             # Explicit Input layer (recommended for Keras 3.x)
             model.add(Input(shape=input_shape))
-            
+
             # 1st Bidirectional LSTM layer - increased units for better pattern recognition
             model.add(Bidirectional(LSTM(units=100, return_sequences=True)))
             model.add(Dropout(0.5))  # Increased dropout to reduce overfitting
-            
+
             # 2nd Bidirectional LSTM layer
             model.add(Bidirectional(LSTM(units=100, return_sequences=True)))
             model.add(Dropout(0.5))  # Increased dropout to reduce overfitting
-            
+
             # 3rd LSTM layer (non-bidirectional for final processing)
             model.add(LSTM(units=50))
             model.add(Dropout(0.5))  # Increased dropout to reduce overfitting
-            
+
             # Output layer
             model.add(Dense(units=1))
-            
+
             # Compile with Adam optimizer with custom learning rate
             optimizer = Adam(learning_rate=0.001)
             model.compile(optimizer=optimizer, loss='mean_squared_error')
@@ -70,7 +70,7 @@ class ModelTrainer:
     def train_model(self, X_train, y_train, X_test, y_test, scaler):
         try:
             model = self.get_model((X_train.shape[1], 1))
-            
+
             # MLflow logging
             dagshub.init(repo_owner='sliitguy', repo_name='Model-X', mlflow=True)
 
@@ -78,7 +78,7 @@ class ModelTrainer:
                 # Training parameters
                 epochs = 10  # Reduced for faster training
                 batch_size = 32  # Reduced for more stable gradients
-                
+
                 # Callbacks for better training
                 early_stopping = EarlyStopping(
                     monitor='val_loss',
@@ -86,7 +86,7 @@ class ModelTrainer:
                     restore_best_weights=True,
                     verbose=1
                 )
-                
+
                 reduce_lr = ReduceLROnPlateau(
                     monitor='val_loss',
                     factor=0.5,
@@ -94,7 +94,7 @@ class ModelTrainer:
                     min_lr=0.0001,
                     verbose=1
                 )
-                
+
                 # Log parameters
                 mlflow.log_param("epochs", epochs)
                 mlflow.log_param("batch_size", batch_size)
@@ -146,7 +146,7 @@ class ModelTrainer:
 
                 # Tagging
                 mlflow.set_tag("Task", "Stock Price Prediction")
-                
+
                 # Log model - Workaround for DagsHub 'unsupported endpoint' on log_model
                 # Save locally first then log artifact
                 tmp_model_path = "model.h5"
@@ -154,7 +154,7 @@ class ModelTrainer:
                 mlflow.log_artifact(tmp_model_path)
                 if os.path.exists(tmp_model_path):
                     os.remove(tmp_model_path)
-                # mlflow.keras.log_model(model, "model") 
+                # mlflow.keras.log_model(model, "model")
 
             return model, test_rmse, test_predict, y_test_actual
 
@@ -164,7 +164,7 @@ class ModelTrainer:
     def initiate_model_trainer(self) -> ModelTrainerArtifact:
         try:
             logging.info("Entered initiate_model_trainer")
-            
+
             train_file_path = self.data_transformation_artifact.transformed_train_file_path
             test_file_path = self.data_transformation_artifact.transformed_test_file_path
 
@@ -172,7 +172,7 @@ class ModelTrainer:
             # Loading the tuples (X, y) saved in data_transformation
             train_data = load_object(train_file_path)
             test_data = load_object(test_file_path)
-            
+
             X_train, y_train = train_data
             X_test, y_test = test_data
 
@@ -189,27 +189,27 @@ class ModelTrainer:
             # Create object containing model info or just save model file.
             # Artifact expects a file path.
             save_path = self.model_trainer_config.trained_model_file_path
-            
+
             # Since object is Keras model, save_object (dill) might work but is fragile.
-            # Recommend using model.save, but for compatibility with 'save_object' utility (if user wants zero change there), 
+            # Recommend using model.save, but for compatibility with 'save_object' utility (if user wants zero change there),
             # we try save_object. Keras objects are pickleable in recent versions but .h5 is standard.
             # To adhere to "make sure main.py works", main doesn't load model, it just passes artifact.
             # So I will save using standard method but point artifact to it?
             # Or use safe pickling.
-            # I'll use save_object but beware. 
+            # I'll use save_object but beware.
             # If save_object fails for Keras, I should verify.
             # Let's trust save_object for now, or better:
-            
+
             # Ensure directory exists
             dir_path = os.path.dirname(save_path)
             os.makedirs(dir_path, exist_ok=True)
-            
+
             # Save using Keras format explicitly if the path allows, otherwise pickle.
             save_object(save_path, model)
 
             # Calculate Regression Metrics for Artifact (already inverse-transformed)
             test_metric = get_regression_score(y_test_actual, test_predict)
-            
+
             model_trainer_artifact = ModelTrainerArtifact(
                 trained_model_file_path=save_path,
                 train_metric_artifact=None, # Removed training metrics from artifact

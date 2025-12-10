@@ -24,19 +24,19 @@ sys.path.insert(0, str(PIPELINE_ROOT / "src"))
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Anomaly Detection Training")
     parser.add_argument("--help-only", action="store_true", help="Show help and exit")
-    
+
     # Parse known args to allow --help to work without loading heavy modules
     args, _ = parser.parse_known_args()
-    
+
     print("=" * 60)
     print("ANOMALY DETECTION - TRAINING PIPELINE")
     print("=" * 60)
-    
+
     # Import and run from main.py
     from main import main
-    
+
     result = main()
-    
+
     if result:
         print("=" * 60)
         print("TRAINING COMPLETE!")

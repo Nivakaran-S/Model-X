@@ -4,11 +4,10 @@ Vectorization Agent Node - Agentic AI for text-to-vector conversion
 Uses language-specific BERT models for Sinhala, Tamil, and English
 """
 
-import os
 import sys
 import logging
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from pathlib import Path
 import numpy as np
 
@@ -759,7 +758,7 @@ Format your response in a clear, structured manner."""
                 }
             )
 
-        logger.info(f"[VectorizationAgent] Expert summary generated")
+        logger.info("[VectorizationAgent] Expert summary generated")
 
         return {
             "current_step": "expert_summary",

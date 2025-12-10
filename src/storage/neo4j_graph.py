@@ -5,8 +5,6 @@ Knowledge graph for event relationships and entity tracking
 
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
-import uuid
 
 logger = logging.getLogger("neo4j_graph")
 

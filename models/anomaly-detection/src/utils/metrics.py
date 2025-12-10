@@ -42,20 +42,20 @@ def calculate_clustering_metrics(
     if not SKLEARN_AVAILABLE:
         logger.warning("sklearn not available, returning empty metrics")
         return {}
-    
+
     metrics = {}
-    
+
     # Filter out noise points (label=-1) for some metrics
     valid_mask = labels >= 0
     n_clusters = len(set(labels[valid_mask]))
-    
+
     # Need at least 2 clusters and >1 samples for metrics
     if n_clusters < 2 or np.sum(valid_mask) < 2:
         metrics["n_clusters"] = n_clusters
         metrics["n_noise_points"] = np.sum(labels == -1)
         metrics["error"] = "insufficient_clusters"
         return metrics
-    
+
     # Internal metrics (don't need ground truth)
     try:
         # Silhouette Score: -1 (bad) to 1 (good)
@@ -66,7 +66,7 @@ def calculate_clustering_metrics(
     except Exception as e:
         logger.debug(f"Silhouette score failed: {e}")
         metrics["silhouette_score"] = None
-    
+
     try:
         # Calinski-Harabasz Index: Higher is better
         # Ratio of between-cluster dispersion to within-cluster dispersion
@@ -76,7 +76,7 @@ def calculate_clustering_metrics(
     except Exception as e:
         logger.debug(f"Calinski-Harabasz failed: {e}")
         metrics["calinski_harabasz_score"] = None
-    
+
     try:
         # Davies-Bouldin Index: Lower is better
         # Average similarity between clusters
@@ -86,19 +86,19 @@ def calculate_clustering_metrics(
     except Exception as e:
         logger.debug(f"Davies-Bouldin failed: {e}")
         metrics["davies_bouldin_score"] = None
-    
+
     # Cluster statistics
     metrics["n_clusters"] = n_clusters
     metrics["n_samples"] = len(labels)
     metrics["n_noise_points"] = int(np.sum(labels == -1))
     metrics["noise_ratio"] = float(np.sum(labels == -1) / len(labels))
-    
+
     # Cluster size statistics
     cluster_sizes = [np.sum(labels == i) for i in range(n_clusters)]
     metrics["min_cluster_size"] = int(min(cluster_sizes)) if cluster_sizes else 0
     metrics["max_cluster_size"] = int(max(cluster_sizes)) if cluster_sizes else 0
     metrics["mean_cluster_size"] = float(np.mean(cluster_sizes)) if cluster_sizes else 0
-    
+
     # External metrics (if ground truth provided)
     if true_labels is not None:
         try:
@@ -108,7 +108,7 @@ def calculate_clustering_metrics(
             ))
         except Exception as e:
             logger.debug(f"ARI failed: {e}")
-        
+
         try:
             # Normalized Mutual Information: 0 to 1, 1=perfect agreement
             metrics["normalized_mutual_info"] = float(normalized_mutual_info_score(
@@ -116,7 +116,7 @@ def calculate_clustering_metrics(
             ))
         except Exception as e:
             logger.debug(f"NMI failed: {e}")
-    
+
     return metrics
 
 
@@ -137,18 +137,18 @@ def calculate_anomaly_metrics(
         Dict of metric_name -> metric_value
     """
     metrics = {}
-    
+
     n_samples = len(labels)
     n_predicted_anomalies = int(np.sum(predicted_anomalies))
-    
+
     metrics["n_samples"] = n_samples
     metrics["n_predicted_anomalies"] = n_predicted_anomalies
     metrics["anomaly_rate"] = float(n_predicted_anomalies / n_samples) if n_samples > 0 else 0
-    
+
     # If ground truth available, calculate precision/recall
     if true_anomalies is not None:
         n_true_anomalies = int(np.sum(true_anomalies))
-        
+
         # True positives: predicted AND actual anomalies
         tp = int(np.sum(predicted_anomalies & true_anomalies))
         # False positives: predicted anomaly but not actual
@@ -157,27 +157,27 @@ def calculate_anomaly_metrics(
         fn = int(np.sum(~predicted_anomalies & true_anomalies))
         # True negatives
         tn = int(np.sum(~predicted_anomalies & ~true_anomalies))
-        
+
         metrics["true_positives"] = tp
         metrics["false_positives"] = fp
         metrics["false_negatives"] = fn
         metrics["true_negatives"] = tn
-        
+
         # Precision: TP / (TP + FP)
         metrics["precision"] = float(tp / (tp + fp)) if (tp + fp) > 0 else 0
-        
+
         # Recall: TP / (TP + FN)
         metrics["recall"] = float(tp / (tp + fn)) if (tp + fn) > 0 else 0
-        
+
         # F1 Score
         if metrics["precision"] + metrics["recall"] > 0:
             metrics["f1_score"] = float(
-                2 * metrics["precision"] * metrics["recall"] / 
+                2 * metrics["precision"] * metrics["recall"] /
                 (metrics["precision"] + metrics["recall"])
             )
         else:
             metrics["f1_score"] = 0
-    
+
     return metrics
 
 
@@ -198,33 +198,33 @@ def calculate_optuna_objective(
         Objective value (higher is better)
     """
     metrics = calculate_clustering_metrics(X, labels)
-    
+
     # Check for errors
     if "error" in metrics:
         return -1.0  # Return bad score for failed clustering
-    
+
     if objective_type == "silhouette":
         score = metrics.get("silhouette_score")
         return score if score is not None else -1.0
-    
+
     elif objective_type == "calinski":
         score = metrics.get("calinski_harabasz_score")
         # Normalize to 0-1 range (approximate)
         return min(score / 1000, 1.0) if score is not None else -1.0
-    
+
     elif objective_type == "combined":
         # Weighted combination of metrics
         silhouette = metrics.get("silhouette_score", -1)
         calinski = min(metrics.get("calinski_harabasz_score", 0) / 1000, 1)
         davies = metrics.get("davies_bouldin_score", 10)
-        
+
         # Davies-Bouldin is lower=better, invert it
         davies_inv = 1 / (1 + davies) if davies is not None else 0
-        
+
         # Weighted combination
         combined = (0.4 * silhouette + 0.3 * calinski + 0.3 * davies_inv)
         return float(combined)
-    
+
     return -1.0
 
 
@@ -241,7 +241,7 @@ def format_metrics_report(metrics: Dict[str, Any]) -> str:
     lines = ["=" * 50]
     lines.append("CLUSTERING METRICS REPORT")
     lines.append("=" * 50)
-    
+
     for key, value in metrics.items():
         if value is None:
             value_str = "N/A"
@@ -249,8 +249,8 @@ def format_metrics_report(metrics: Dict[str, Any]) -> str:
             value_str = f"{value:.4f}"
         else:
             value_str = str(value)
-        
+
         lines.append(f"{key:30s}: {value_str}")
-    
+
     lines.append("=" * 50)
     return "\n".join(lines)

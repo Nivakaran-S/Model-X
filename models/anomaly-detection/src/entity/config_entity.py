@@ -46,20 +46,20 @@ class DataTransformationConfig:
     models_cache_dir: str = field(default_factory=lambda: str(
         Path(__file__).parent.parent.parent / "models_cache"
     ))
-    
+
     # Language-specific BERT models
     english_model: str = "distilbert-base-uncased"
     sinhala_model: str = "keshan/SinhalaBERTo"
     tamil_model: str = "l3cube-pune/tamil-bert"
-    
+
     # Language detection
     fasttext_model_path: str = field(default_factory=lambda: str(
         Path(__file__).parent.parent.parent / "models_cache" / "lid.176.bin"  # FastText language ID model
     ))
-    
+
     # Vector dimensions
     vector_dim: int = 768  # Standard BERT dimension
-    
+
     # Output
     output_directory: str = field(default_factory=lambda: str(
         Path(__file__).parent.parent.parent / "artifacts" / "data_transformation"
@@ -80,16 +80,16 @@ class ModelTrainerConfig:
         "MLFLOW_TRACKING_PASSWORD", ""
     ))
     experiment_name: str = "anomaly_detection_feeds"
-    
+
     # Model configurations
     models_to_train: List[str] = field(default_factory=lambda: [
         "dbscan", "kmeans", "hdbscan", "isolation_forest", "lof"
     ])
-    
+
     # Optuna hyperparameter tuning
     n_optuna_trials: int = 50
     optuna_timeout_seconds: int = 3600  # 1 hour
-    
+
     # Model output
     output_directory: str = field(default_factory=lambda: str(
         Path(__file__).parent.parent.parent / "artifacts" / "model_trainer"
@@ -103,7 +103,7 @@ class PipelineConfig:
     data_validation: DataValidationConfig = field(default_factory=DataValidationConfig)
     data_transformation: DataTransformationConfig = field(default_factory=DataTransformationConfig)
     model_trainer: ModelTrainerConfig = field(default_factory=ModelTrainerConfig)
-    
+
     # Pipeline settings
     batch_threshold: int = 1000  # Trigger training after this many new records
     run_interval_hours: int = 24  # Fallback daily run

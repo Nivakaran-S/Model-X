@@ -5,7 +5,6 @@ Unified storage manager orchestrating 3-tier deduplication pipeline
 
 import logging
 from typing import Dict, Any, List, Optional, Tuple
-import uuid
 import csv
 from datetime import datetime
 from pathlib import Path
@@ -306,7 +305,7 @@ class StorageManager:
                                 ),
                             }
                         )
-                except Exception as e:
+                except Exception:
                     feeds.append(
                         {
                             "event_id": event_id,
@@ -363,5 +362,5 @@ class StorageManager:
         """Cleanup on destruction"""
         try:
             self.neo4j.close()
-        except:
-            pass
+        except Exception:
+            pass  # Ignore close errors

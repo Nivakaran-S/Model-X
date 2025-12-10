@@ -22,7 +22,6 @@ from src.llms.groqllm import GroqLLM
 from src.utils.db_manager import (
     Neo4jManager,
     ChromaDBManager,
-    generate_content_hash,
     extract_post_data,
 )
 
@@ -534,8 +533,8 @@ JSON only:"""
                 llm_summary = (
                     response.content if hasattr(response, "content") else str(response)
                 )
-            except:
-                pass
+            except Exception as fallback_error:
+                print(f"  ⚠️ LLM fallback also failed: {fallback_error}")
         except Exception as e:
             print(f"  ⚠️ LLM error: {e}")
 
@@ -685,11 +684,6 @@ Source: Multi-platform competitive intelligence (Twitter, Facebook, LinkedIn, In
         """
         print("[MODULE 4] Aggregating and Storing Feeds")
 
-        from src.utils.db_manager import (
-            Neo4jManager,
-            ChromaDBManager,
-            extract_post_data,
-        )
 
         # Initialize database managers
         neo4j_manager = Neo4jManager()
@@ -877,7 +871,7 @@ Source: Multi-platform competitive intelligence (Twitter, Facebook, LinkedIn, In
         neo4j_manager.close()
 
         # Print statistics
-        print(f"\n  📊 AGGREGATION STATISTICS")
+        print("\n  📊 AGGREGATION STATISTICS")
         print(f"  Total Posts Processed: {total_posts}")
         print(f"  Unique Posts: {unique_posts}")
         print(f"  Duplicate Posts: {duplicate_posts}")
@@ -892,7 +886,7 @@ Source: Multi-platform competitive intelligence (Twitter, Facebook, LinkedIn, In
             chroma_manager.get_document_count() if chroma_manager.collection else 0
         )
 
-        print(f"\n  💾 DATABASE TOTALS")
+        print("\n  💾 DATABASE TOTALS")
         print(f"  Neo4j Total Posts: {neo4j_total}")
         print(f"  ChromaDB Total Docs: {chroma_total}")
 

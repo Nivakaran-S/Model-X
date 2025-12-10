@@ -26,7 +26,7 @@ class DataTransformation:
     3. Engineers temporal and engagement features
     4. Optionally integrates with Vectorizer Agent Graph for LLM insights
     """
-    
+
     def __init__(self, config: Optional[DataTransformationConfig] = None, use_agent_graph: bool = True):
         """
         Initialize data transformation component.
@@ -37,13 +37,13 @@ class DataTransformation:
         """
         self.config = config or DataTransformationConfig()
         self.use_agent_graph = use_agent_graph
-        
+
         # Ensure output directory exists
         Path(self.config.output_directory).mkdir(parents=True, exist_ok=True)
-        
+
         # Get vectorizer (lazy loaded)
         self.vectorizer = get_vectorizer(self.config.models_cache_dir)
-        
+
         # Vectorization API integration
         # Note: Direct import of vectorizationAgentGraph fails due to 'src' namespace collision
         # between this project (models/anomaly-detection/src) and main project (src).
@@ -51,7 +51,7 @@ class DataTransformation:
         self.vectorizer_graph = None  # Not used - we use HTTP API instead
         self.vectorization_api_url = os.getenv("VECTORIZATION_API_URL", "http://localhost:8001")
         self.vectorization_api_available = False
-        
+
         if self.use_agent_graph:
             # Check if vectorization API is available
             try:
@@ -65,11 +65,11 @@ class DataTransformation:
             except Exception as e:
                 logger.warning(f"[DataTransformation] Vectorization API not available: {e}")
                 logger.info("[DataTransformation] Using local vectorization (no LLM insights)")
-        
-        logger.info(f"[DataTransformation] Initialized")
+
+        logger.info("[DataTransformation] Initialized")
         logger.info(f"  Models cache: {self.config.models_cache_dir}")
         logger.info(f"  Vectorization API: {'enabled' if self.vectorization_api_available else 'disabled (using local)'}")
-    
+
     def _process_with_agent_graph(self, texts: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         Process texts through the Vectorization API.
@@ -92,12 +92,12 @@ class DataTransformation:
         if not self.vectorization_api_available:
             logger.warning("[DataTransformation] Vectorization API not available, using fallback")
             return None
-        
+
         try:
             import requests
-            
+
             batch_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
+
             # Prepare request payload
             payload = {
                 "texts": [
@@ -112,18 +112,18 @@ class DataTransformation:
                 "include_vectors": True,
                 "include_expert_summary": True
             }
-            
+
             # Call vectorization API
             response = requests.post(
                 f"{self.vectorization_api_url}/vectorize",
                 json=payload,
                 timeout=120  # 2 minutes for large batches
             )
-            
+
             if response.status_code == 200:
                 result = response.json()
                 logger.info(f"[DataTransformation] Vectorization API processed {len(texts)} texts")
-                
+
                 # Convert API response to expected format
                 return {
                     "language_detection_results": result.get("vectors", []),
@@ -140,11 +140,11 @@ class DataTransformation:
             else:
                 logger.error(f"[DataTransformation] Vectorization API error: {response.status_code}")
                 return None
-            
+
         except Exception as e:
             logger.error(f"[DataTransformation] Vectorization API call failed: {e}")
             return None
-    
+
     def _detect_languages(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Detect language for each text entry.
@@ -156,26 +156,26 @@ class DataTransformation:
             DataFrame with 'language' and 'language_confidence' columns
         """
         logger.info("[DataTransformation] Detecting languages...")
-        
+
         languages = []
         confidences = []
-        
+
         for text in tqdm(df["text"].fillna(""), desc="Language Detection"):
             lang, conf = detect_language(text)
             languages.append(lang)
             confidences.append(conf)
-        
+
         df["language"] = languages
         df["language_confidence"] = confidences
-        
+
         # Log distribution
         lang_counts = df["language"].value_counts()
-        logger.info(f"[DataTransformation] Language distribution:")
+        logger.info("[DataTransformation] Language distribution:")
         for lang, count in lang_counts.items():
             logger.info(f"  {lang}: {count} ({100*count/len(df):.1f}%)")
-        
+
         return df
-    
+
     def _extract_temporal_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Extract temporal features from timestamp.
@@ -187,29 +187,29 @@ class DataTransformation:
             DataFrame with temporal feature columns
         """
         logger.info("[DataTransformation] Extracting temporal features...")
-        
+
         if "timestamp" not in df.columns:
             logger.warning("[DataTransformation] No timestamp column found")
             return df
-        
+
         # Convert to datetime
         try:
             df["datetime"] = pd.to_datetime(df["timestamp"], errors='coerce')
         except Exception as e:
             logger.warning(f"[DataTransformation] Timestamp conversion error: {e}")
             return df
-        
+
         # Extract features
         df["hour_of_day"] = df["datetime"].dt.hour.fillna(0).astype(int)
         df["day_of_week"] = df["datetime"].dt.dayofweek.fillna(0).astype(int)
         df["is_weekend"] = (df["day_of_week"] >= 5).astype(int)
         df["is_business_hours"] = ((df["hour_of_day"] >= 9) & (df["hour_of_day"] <= 17)).astype(int)
-        
+
         # Drop intermediate column
         df = df.drop(columns=["datetime"], errors='ignore')
-        
+
         return df
-    
+
     def _extract_engagement_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Extract and normalize engagement features.
@@ -221,33 +221,33 @@ class DataTransformation:
             DataFrame with engagement feature columns
         """
         logger.info("[DataTransformation] Extracting engagement features...")
-        
+
         # Check for engagement columns
         engagement_cols = ["engagement_score", "engagement_likes", "engagement_shares", "engagement_comments"]
-        
+
         for col in engagement_cols:
             if col not in df.columns:
                 df[col] = 0
-        
+
         # Combined engagement score
         df["total_engagement"] = (
             df["engagement_likes"].fillna(0) +
             df["engagement_shares"].fillna(0) * 2 +  # Shares weighted more
             df["engagement_comments"].fillna(0)
         )
-        
+
         # Log transform for better distribution
         df["log_engagement"] = np.log1p(df["total_engagement"])
-        
+
         # Normalize to 0-1 range
         max_engagement = df["total_engagement"].max()
         if max_engagement > 0:
             df["normalized_engagement"] = df["total_engagement"] / max_engagement
         else:
             df["normalized_engagement"] = 0
-        
+
         return df
-    
+
     def _extract_text_features(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Extract basic text features.
@@ -259,12 +259,12 @@ class DataTransformation:
             DataFrame with text feature columns
         """
         logger.info("[DataTransformation] Extracting text features...")
-        
+
         df["text_length"] = df["text"].fillna("").str.len()
         df["word_count"] = df["text"].fillna("").str.split().str.len().fillna(0).astype(int)
-        
+
         return df
-    
+
     def _vectorize_texts(self, df: pd.DataFrame) -> np.ndarray:
         """
         Vectorize texts using language-specific BERT models.
@@ -276,22 +276,22 @@ class DataTransformation:
             numpy array of shape (n_samples, 768)
         """
         logger.info("[DataTransformation] Vectorizing texts with BERT models...")
-        
+
         embeddings = []
-        
+
         for idx, row in tqdm(df.iterrows(), total=len(df), desc="Text Vectorization"):
             text = row.get("text", "")
             language = row.get("language", "english")
-            
+
             try:
                 embedding = self.vectorizer.vectorize(text, language)
                 embeddings.append(embedding)
             except Exception as e:
                 logger.debug(f"Vectorization error at {idx}: {e}")
                 embeddings.append(np.zeros(self.config.vector_dim))
-        
+
         return np.array(embeddings)
-    
+
     def _build_feature_matrix(self, df: pd.DataFrame, embeddings: np.ndarray) -> np.ndarray:
         """
         Combine all features into a single feature matrix.
@@ -304,17 +304,17 @@ class DataTransformation:
             Combined feature matrix
         """
         logger.info("[DataTransformation] Building feature matrix...")
-        
+
         # Numeric features to include
         numeric_cols = [
             "hour_of_day", "day_of_week", "is_weekend", "is_business_hours",
             "log_engagement", "normalized_engagement",
             "text_length", "word_count"
         ]
-        
+
         # Filter to available columns
         available_cols = [col for col in numeric_cols if col in df.columns]
-        
+
         if available_cols:
             numeric_features = df[available_cols].fillna(0).values
             # Normalize numeric features
@@ -323,13 +323,13 @@ class DataTransformation:
             numeric_features = scaler.fit_transform(numeric_features)
         else:
             numeric_features = np.zeros((len(df), 1))
-        
+
         # Combine with embeddings
         feature_matrix = np.hstack([embeddings, numeric_features])
-        
+
         logger.info(f"[DataTransformation] Feature matrix shape: {feature_matrix.shape}")
         return feature_matrix
-    
+
     def transform(self, data_path: str) -> DataTransformationArtifact:
         """
         Execute data transformation pipeline.
@@ -342,22 +342,22 @@ class DataTransformation:
             DataTransformationArtifact with paths and statistics
         """
         import json
-        
+
         logger.info(f"[DataTransformation] Starting transformation: {data_path}")
-        
+
         # Load data
         df = pd.read_parquet(data_path)
         total_records = len(df)
         logger.info(f"[DataTransformation] Loaded {total_records} records")
-        
+
         # Initialize agent graph results
         agent_result = None
         expert_summary = None
-        
+
         # Try to process with vectorizer agent graph first
         if self.vectorizer_graph and self.use_agent_graph:
             logger.info("[DataTransformation] Using Vectorizer Agent Graph...")
-            
+
             # Prepare texts for agent graph
             texts_for_agent = []
             for idx, row in df.iterrows():
@@ -369,20 +369,20 @@ class DataTransformation:
                         "timestamp": str(row.get("timestamp", ""))
                     }
                 })
-            
+
             # Process through agent graph
             agent_result = self._process_with_agent_graph(texts_for_agent)
-            
+
             if agent_result:
                 expert_summary = agent_result.get("expert_summary", "")
-                logger.info(f"[DataTransformation] Agent graph completed with expert summary")
-        
+                logger.info("[DataTransformation] Agent graph completed with expert summary")
+
         # Run standard transformations (fallback or additional)
         df = self._detect_languages(df)
         df = self._extract_temporal_features(df)
         df = self._extract_engagement_features(df)
         df = self._extract_text_features(df)
-        
+
         # Vectorize texts (use agent result if available, otherwise fallback)
         if agent_result and agent_result.get("vector_embeddings"):
             # Extract vectors from agent graph result
@@ -394,25 +394,25 @@ class DataTransformation:
         else:
             # Fallback to direct vectorization
             embeddings = self._vectorize_texts(df)
-        
+
         # Build combined feature matrix
         feature_matrix = self._build_feature_matrix(df, embeddings)
-        
+
         # Save outputs
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         # Save transformed dataframe
         transformed_path = Path(self.config.output_directory) / f"transformed_data_{timestamp}.parquet"
         df.to_parquet(transformed_path, index=False)
-        
+
         # Save embeddings
         embeddings_path = Path(self.config.output_directory) / f"embeddings_{timestamp}.npy"
         np.save(embeddings_path, embeddings)
-        
+
         # Save feature matrix
         features_path = Path(self.config.output_directory) / f"features_{timestamp}.npy"
         np.save(features_path, feature_matrix)
-        
+
         # Save agent graph insights if available
         insights_path = None
         if agent_result:
@@ -427,10 +427,10 @@ class DataTransformation:
             with open(insights_path, "w", encoding="utf-8") as f:
                 json.dump(insights_data, f, indent=2, ensure_ascii=False)
             logger.info(f"[DataTransformation] Saved LLM insights to {insights_path}")
-        
+
         # Language distribution
         lang_dist = df["language"].value_counts().to_dict()
-        
+
         # Build report
         report = {
             "timestamp": timestamp,
@@ -441,7 +441,7 @@ class DataTransformation:
             "used_agent_graph": agent_result is not None,
             "expert_summary_available": expert_summary is not None
         }
-        
+
         artifact = DataTransformationArtifact(
             transformed_data_path=str(transformed_path),
             vector_embeddings_path=str(embeddings_path),
@@ -450,7 +450,7 @@ class DataTransformation:
             language_distribution=lang_dist,
             transformation_report=report
         )
-        
+
         logger.info(f"[DataTransformation] ✓ Complete: {feature_matrix.shape}")
         if agent_result:
             logger.info(f"[DataTransformation] ✓ LLM Expert Summary: {len(expert_summary or '')} chars")

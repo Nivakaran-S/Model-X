@@ -403,71 +403,84 @@ def get_all_matching_districts(feed: Dict[str, Any]) -> List[str]:
 def run_graph_loop():
     """
     Graph execution in separate thread.
-    Runs the combinedAgentGraph and stores results in database.
+    Runs the combinedAgentGraph every 60 seconds (non-blocking pattern).
+    
+    UPDATED: Graph now runs single cycles and this loop handles the 60s interval
+    externally, making the pattern non-blocking and interruptible.
     """
+    REFRESH_INTERVAL_SECONDS = 60
+    shutdown_event = threading.Event()
+    
     logger.info("="*80)
-    logger.info("[GRAPH THREAD] Starting Roger combinedAgentGraph loop")
+    logger.info("[GRAPH THREAD] Starting Roger combinedAgentGraph loop (60s interval)")
     logger.info("="*80)
 
-    initial_state = CombinedAgentState(
-        domain_insights=[],
-        final_ranked_feed=[],
-        run_count=0,
-        max_runs=999,  # Continuous mode
-        route=None
-    )
+    cycle_count = 0
+    
+    while not shutdown_event.is_set():
+        cycle_count += 1
+        cycle_start = time.time()
+        
+        logger.info(f"[GRAPH THREAD] Starting cycle #{cycle_count}")
+        
+        initial_state = CombinedAgentState(
+            domain_insights=[],
+            final_ranked_feed=[],
+            run_count=cycle_count,
+            max_runs=1,  # Single cycle mode
+            route=None
+        )
 
-    try:
-        # Note: Using synchronous invoke since we're in a thread
-        # Increase recursion limit for the multi-agent graph (default is 25)
-        config = {"recursion_limit": 100}
-        for event in graph.stream(initial_state, config=config):
-            logger.info(f"[GRAPH] Event nodes: {list(event.keys())}")
+        try:
+            # Run a single graph cycle (non-blocking since router now returns END)
+            config = {"recursion_limit": 100}
+            for event in graph.stream(initial_state, config=config):
+                logger.info(f"[GRAPH] Event nodes: {list(event.keys())}")
 
-            for node_name, node_output in event.items():
-                # Extract feed data
-                if hasattr(node_output, 'final_ranked_feed'):
-                    feeds = node_output.final_ranked_feed
-                elif isinstance(node_output, dict):
-                    feeds = node_output.get('final_ranked_feed', [])
-                else:
-                    continue
+                for node_name, node_output in event.items():
+                    # Extract feed data
+                    if hasattr(node_output, 'final_ranked_feed'):
+                        feeds = node_output.final_ranked_feed
+                    elif isinstance(node_output, dict):
+                        feeds = node_output.get('final_ranked_feed', [])
+                    else:
+                        continue
 
-                if feeds:
-                    logger.info(f"[GRAPH] {node_name} produced {len(feeds)} feeds")
+                    if feeds:
+                        logger.info(f"[GRAPH] {node_name} produced {len(feeds)} feeds")
 
-                    # FIELD_NORMALIZATION: Transform graph format to frontend format
-                    for feed_item in feeds:
-                        if isinstance(feed_item, dict):
-                            event_data = feed_item
-                        else:
-                            event_data = feed_item.__dict__ if hasattr(feed_item, '__dict__') else {}
+                        # FIELD_NORMALIZATION: Transform graph format to frontend format
+                        for feed_item in feeds:
+                            if isinstance(feed_item, dict):
+                                event_data = feed_item
+                            else:
+                                event_data = feed_item.__dict__ if hasattr(feed_item, '__dict__') else {}
 
-                        # Normalize field names: graph uses content_summary/target_agent, frontend expects summary/domain
-                        event_id = event_data.get("event_id", str(uuid.uuid4()))
-                        summary = event_data.get("content_summary") or event_data.get("summary", "")
-                        domain = event_data.get("target_agent") or event_data.get("domain", "unknown")
-                        severity = event_data.get("severity", "medium")
-                        impact_type = event_data.get("impact_type", "risk")
-                        confidence = event_data.get("confidence_score", event_data.get("confidence", 0.5))
-                        timestamp = event_data.get("timestamp", datetime.utcnow().isoformat())
+                            # Normalize field names: graph uses content_summary/target_agent, frontend expects summary/domain
+                            event_id = event_data.get("event_id", str(uuid.uuid4()))
+                            summary = event_data.get("content_summary") or event_data.get("summary", "")
+                            domain = event_data.get("target_agent") or event_data.get("domain", "unknown")
+                            severity = event_data.get("severity", "medium")
+                            impact_type = event_data.get("impact_type", "risk")
+                            confidence = event_data.get("confidence_score", event_data.get("confidence", 0.5))
+                            timestamp = event_data.get("timestamp", datetime.utcnow().isoformat())
 
-                        # Check for duplicates
-                        is_dup, _, _ = storage_manager.is_duplicate(summary)
+                            # Check for duplicates
+                            is_dup, _, _ = storage_manager.is_duplicate(summary)
 
-                        if not is_dup:
-                            try:
-                                storage_manager.store_event(
-                                    event_id=event_id,
-                                    summary=summary,
-                                    domain=domain,
-                                    severity=severity,
-                                    impact_type=impact_type,
-                                    confidence_score=confidence
-                                )
-                                logger.info(f"[GRAPH] Stored new feed: {summary[:60]}...")
-                            except Exception as storage_error:
-                                logger.warning(f"[GRAPH] Storage error (continuing): {storage_error}")
+                            if not is_dup:
+                                try:
+                                    storage_manager.store_event(
+                                        event_id=event_id,
+                                        summary=summary,
+                                        domain=domain,
+                                        severity=severity,
+                                        impact_type=impact_type,
+                                        confidence_score=confidence
+                                    )
+                                    logger.info(f"[GRAPH] Stored new feed: {summary[:60]}...")
+                                except Exception as storage_error:
+                                    logger.warning(f"[GRAPH] Storage error (continuing): {storage_error}")
 
                             # DIRECT_BROADCAST_FIX: Set first_run_complete and broadcast
                             if not current_state.get('first_run_complete'):
@@ -482,11 +495,20 @@ def run_graph_loop():
                                         main_event_loop
                                     )
 
-                # Small delay to prevent CPU overload
-                time.sleep(0.3)
+        except Exception as e:
+            logger.error(f"[GRAPH THREAD] Error in cycle #{cycle_count}: {e}", exc_info=True)
 
-    except Exception as e:
-        logger.error(f"[GRAPH THREAD] Error: {e}", exc_info=True)
+        # Calculate time spent in this cycle
+        cycle_duration = time.time() - cycle_start
+        logger.info(f"[GRAPH THREAD] Cycle #{cycle_count} completed in {cycle_duration:.1f}s")
+        
+        # Wait for remaining time to complete 60s interval (interruptible)
+        wait_time = max(0, REFRESH_INTERVAL_SECONDS - cycle_duration)
+        if wait_time > 0:
+            logger.info(f"[GRAPH THREAD] Waiting {wait_time:.1f}s before next cycle...")
+            # Use Event.wait() for interruptible sleep instead of time.sleep()
+            shutdown_event.wait(timeout=wait_time)
+
 
 
 async def database_polling_loop():
@@ -1228,8 +1250,6 @@ def _get_rag():
     return _rag_instance
 
 
-from pydantic import BaseModel
-from typing import Optional
 
 
 class ChatRequest(BaseModel):
@@ -1644,7 +1664,6 @@ async def get_district_weather(district: str):
 async def get_weather_model_status():
     """Get weather prediction model status and training info."""
     from pathlib import Path
-    import os
 
     models_dir = Path(__file__).parent / "models" / "weather-prediction" / "artifacts" / "models"
     predictions_dir = Path(__file__).parent / "models" / "weather-prediction" / "output" / "predictions"

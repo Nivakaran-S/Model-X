@@ -205,7 +205,7 @@ const IntelligenceFeed = () => {
           </div>
 
           {/* ALL */}
-          <TabsContent value="all" className="space-y-3 max-h-[600px] overflow-y-auto">
+          <TabsContent value="all" className="space-y-3 max-h-[600px] overflow-y-auto intel-scrollbar pr-2">
             {allEvents.length > 0 ? (
               allEvents.map(renderEventCard)
             ) : (
@@ -217,7 +217,7 @@ const IntelligenceFeed = () => {
           </TabsContent>
 
           {/* NEWS */}
-          <TabsContent value="news" className="space-y-3 max-h-[600px] overflow-y-auto">
+          <TabsContent value="news" className="space-y-3 max-h-[600px] overflow-y-auto intel-scrollbar pr-2">
             {newsEvents.length > 0 ? (
               newsEvents.map(renderEventCard)
             ) : (
@@ -229,7 +229,7 @@ const IntelligenceFeed = () => {
           </TabsContent>
 
           {/* POLITICAL */}
-          <TabsContent value="political" className="space-y-3 max-h-[600px] overflow-y-auto">
+          <TabsContent value="political" className="space-y-3 max-h-[600px] overflow-y-auto intel-scrollbar pr-2">
             {politicalEvents.length > 0 ? (
               politicalEvents.map(renderEventCard)
             ) : (
@@ -241,7 +241,7 @@ const IntelligenceFeed = () => {
           </TabsContent>
 
           {/* WEATHER */}
-          <TabsContent value="weather" className="space-y-3 max-h-[600px] overflow-y-auto">
+          <TabsContent value="weather" className="space-y-3 max-h-[600px] overflow-y-auto intel-scrollbar pr-2">
             {weatherEvents.length > 0 ? (
               weatherEvents.map(renderEventCard)
             ) : (
@@ -253,7 +253,7 @@ const IntelligenceFeed = () => {
           </TabsContent>
 
           {/* ECONOMIC */}
-          <TabsContent value="economic" className="space-y-3 max-h-[600px] overflow-y-auto">
+          <TabsContent value="economic" className="space-y-3 max-h-[600px] overflow-y-auto intel-scrollbar pr-2">
             {economicEvents.length > 0 ? (
               economicEvents.map(renderEventCard)
             ) : (

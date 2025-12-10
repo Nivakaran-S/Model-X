@@ -1,7 +1,8 @@
 import yaml
 from src.exception.exception import StockPriceException
 from src.logging.logger import logging
-import os,sys
+import os
+import sys
 import numpy as np
 #import dill
 import pickle
@@ -15,7 +16,7 @@ def read_yaml_file(file_path: str) -> dict:
             return yaml.safe_load(yaml_file)
     except Exception as e:
         raise StockPriceException(e, sys) from e
-    
+
 def write_yaml_file(file_path: str, content: object, replace: bool = False) -> None:
     try:
         if replace:
@@ -26,7 +27,7 @@ def write_yaml_file(file_path: str, content: object, replace: bool = False) -> N
             yaml.dump(content, file)
     except Exception as e:
         raise StockPriceException(e, sys)
-    
+
 def save_numpy_array_data(file_path: str, array: np.array):
     """
     Save numpy array data to file
@@ -40,7 +41,7 @@ def save_numpy_array_data(file_path: str, array: np.array):
             np.save(file_obj, array)
     except Exception as e:
         raise StockPriceException(e, sys) from e
-    
+
 def save_object(file_path: str, obj: object) -> None:
     try:
         logging.info("Entered the save_object method of MainUtils class")
@@ -50,7 +51,7 @@ def save_object(file_path: str, obj: object) -> None:
         logging.info("Exited the save_object method of MainUtils class")
     except Exception as e:
         raise StockPriceException(e, sys) from e
-    
+
 def load_object(file_path: str, ) -> object:
     try:
         if not os.path.exists(file_path):
@@ -59,7 +60,7 @@ def load_object(file_path: str, ) -> object:
             return pickle.load(file_obj)
     except Exception as e:
         raise StockPriceException(e, sys) from e
-    
+
 def load_numpy_array_data(file_path: str) -> np.array:
     """
     load numpy array data from file
@@ -71,7 +72,7 @@ def load_numpy_array_data(file_path: str) -> np.array:
             return np.load(file_obj)
     except Exception as e:
         raise StockPriceException(e, sys) from e
-    
+
 
 
 def evaluate_models(X_train, y_train,X_test,y_test,models,param):

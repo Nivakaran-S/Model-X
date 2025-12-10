@@ -168,6 +168,15 @@ graph TD
 - Loop control with configurable intervals
 - Real-time WebSocket broadcasting
 
+**Architecture Improvements (v2.1):** 🆕
+- **Rate Limiting**: Domain-specific rate limits prevent anti-bot detection
+  - Twitter: 15 RPM, LinkedIn: 10 RPM, News: 60 RPM
+  - Thread-safe semaphores for max concurrent requests
+- **Error Handling**: Per-agent try/catch prevents cascading failures
+  - Failed agents return empty results, others continue
+- **Non-Blocking Refresh**: 60-second cycle with interruptible sleep
+  - `threading.Event.wait()` instead of blocking `time.sleep()`
+
 ---
 
 ### 2. Political Agent Graph (`politicalAgentGraph.py`)

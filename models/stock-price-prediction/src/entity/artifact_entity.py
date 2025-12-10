@@ -26,7 +26,7 @@ class RegressionMetricArtifact:
     mae: float
     r2_score: float
     mape: float
-    
+
 @dataclass
 class ModelTrainerArtifact:
     trained_model_file_path: str

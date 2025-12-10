@@ -316,7 +316,7 @@ JSON only:"""
         # Sort descending by score
         ranked = sorted(unique, key=calculate_score, reverse=True)
 
-        logger.info(f"[FeedAggregatorAgent] Top 3 events by score:")
+        logger.info("[FeedAggregatorAgent] Top 3 events by score:")
         for i, ins in enumerate(ranked[:3]):
             score = calculate_score(ins)
             domain = ins.get("domain", "unknown")
@@ -618,7 +618,7 @@ JSON only:"""
 
         snapshot["last_updated"] = datetime.utcnow().isoformat()
 
-        logger.info(f"[DataRefresherAgent] Dashboard Metrics:")
+        logger.info("[DataRefresherAgent] Dashboard Metrics:")
         logger.info(f"  Logistics Friction: {snapshot['logistics_friction']}")
         logger.info(f"  Compliance Volatility: {snapshot['compliance_volatility']}")
         logger.info(f"  Market Instability: {snapshot['market_instability']}")
@@ -651,25 +651,16 @@ JSON only:"""
         """
         Routing decision after dashboard refresh.
 
-        CRITICAL: This controls the loop vs. end decision.
-        For Continuous Mode, this waits for a set interval and then loops.
+        UPDATED: Returns END immediately (non-blocking). The 60-second interval
+        is now managed externally by the caller (main.py run_graph_loop).
+        This makes the graph execution non-blocking.
 
         Returns:
-            {"route": "GraphInitiator"} to loop back
+            {"route": "END"} to complete this cycle
         """
-        # [Image of server polling architecture]
+        logger.info("[DataRefreshRouter] Cycle complete. Returning END (non-blocking).")
+        
+        # Return END to complete this graph cycle
+        # The 60-second scheduling is handled by the caller in main.py
+        return {"route": "END"}
 
-        REFRESH_INTERVAL_SECONDS = 60
-
-        logger.info(
-            f"[DataRefreshRouter] Cycle complete. Waiting {REFRESH_INTERVAL_SECONDS}s for next refresh..."
-        )
-
-        # Blocking sleep to simulate polling interval
-        # In a full async production app, you might use asyncio.sleep here
-        time.sleep(REFRESH_INTERVAL_SECONDS)
-
-        logger.info("[DataRefreshRouter] Waking up. Routing to GraphInitiator.")
-
-        # Always return GraphInitiator to create an infinite loop
-        return {"route": "GraphInitiator"}

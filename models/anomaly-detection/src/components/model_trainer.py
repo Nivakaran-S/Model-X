@@ -58,7 +58,7 @@ class ModelTrainer:
     3. Anomaly detection (Isolation Forest, LOF)
     4. MLflow experiment tracking
     """
-    
+
     def __init__(self, config: Optional[ModelTrainerConfig] = None):
         """
         Initialize model trainer.
@@ -67,51 +67,51 @@ class ModelTrainer:
             config: Optional configuration
         """
         self.config = config or ModelTrainerConfig()
-        
+
         # Ensure output directory exists
         Path(self.config.output_directory).mkdir(parents=True, exist_ok=True)
-        
+
         # Setup MLflow
         self._setup_mlflow()
-        
-        logger.info(f"[ModelTrainer] Initialized")
+
+        logger.info("[ModelTrainer] Initialized")
         logger.info(f"  Models to train: {self.config.models_to_train}")
         logger.info(f"  Optuna trials: {self.config.n_optuna_trials}")
-    
+
     def _setup_mlflow(self):
         """Configure MLflow tracking"""
         if not MLFLOW_AVAILABLE:
             logger.warning("[ModelTrainer] MLflow not available")
             return
-        
+
         try:
             # Set tracking URI
             mlflow.set_tracking_uri(self.config.mlflow_tracking_uri)
-            
+
             # Set credentials for DagsHub
             if self.config.mlflow_username and self.config.mlflow_password:
                 os.environ["MLFLOW_TRACKING_USERNAME"] = self.config.mlflow_username
                 os.environ["MLFLOW_TRACKING_PASSWORD"] = self.config.mlflow_password
-            
+
             # Create or get experiment
             try:
                 mlflow.create_experiment(self.config.experiment_name)
             except Exception:
                 pass
             mlflow.set_experiment(self.config.experiment_name)
-            
+
             logger.info(f"[ModelTrainer] MLflow configured: {self.config.mlflow_tracking_uri}")
-            
+
         except Exception as e:
             logger.warning(f"[ModelTrainer] MLflow setup error: {e}")
-    
+
     def _train_dbscan(self, X: np.ndarray, trial: Optional['optuna.Trial'] = None) -> Dict[str, Any]:
         """
         Train DBSCAN with optional Optuna tuning.
         """
         if not SKLEARN_AVAILABLE:
             return {"error": "sklearn not available"}
-        
+
         # Hyperparameters
         if trial:
             eps = trial.suggest_float("eps", 0.1, 2.0)
@@ -119,28 +119,28 @@ class ModelTrainer:
         else:
             eps = 0.5
             min_samples = 5
-        
+
         model = DBSCAN(eps=eps, min_samples=min_samples, n_jobs=-1)
         labels = model.fit_predict(X)
-        
+
         metrics = calculate_clustering_metrics(X, labels)
         metrics["eps"] = eps
         metrics["min_samples"] = min_samples
-        
+
         return {
             "model": model,
             "labels": labels,
             "metrics": metrics,
             "params": {"eps": eps, "min_samples": min_samples}
         }
-    
+
     def _train_kmeans(self, X: np.ndarray, trial: Optional['optuna.Trial'] = None) -> Dict[str, Any]:
         """
         Train KMeans with optional Optuna tuning.
         """
         if not SKLEARN_AVAILABLE:
             return {"error": "sklearn not available"}
-        
+
         # Hyperparameters
         if trial:
             n_clusters = trial.suggest_int("n_clusters", 2, 20)
@@ -148,27 +148,27 @@ class ModelTrainer:
         else:
             n_clusters = 5
             n_init = 10
-        
+
         model = KMeans(n_clusters=n_clusters, n_init=n_init, random_state=42)
         labels = model.fit_predict(X)
-        
+
         metrics = calculate_clustering_metrics(X, labels)
         metrics["n_clusters"] = n_clusters
-        
+
         return {
             "model": model,
             "labels": labels,
             "metrics": metrics,
             "params": {"n_clusters": n_clusters, "n_init": n_init}
         }
-    
+
     def _train_hdbscan(self, X: np.ndarray, trial: Optional['optuna.Trial'] = None) -> Dict[str, Any]:
         """
         Train HDBSCAN with optional Optuna tuning.
         """
         if not HDBSCAN_AVAILABLE:
             return {"error": "hdbscan not available"}
-        
+
         # Hyperparameters
         if trial:
             min_cluster_size = trial.suggest_int("min_cluster_size", 5, 50)
@@ -176,30 +176,30 @@ class ModelTrainer:
         else:
             min_cluster_size = 15
             min_samples = 5
-        
+
         model = hdbscan.HDBSCAN(
             min_cluster_size=min_cluster_size,
             min_samples=min_samples,
             core_dist_n_jobs=-1
         )
         labels = model.fit_predict(X)
-        
+
         metrics = calculate_clustering_metrics(X, labels)
-        
+
         return {
             "model": model,
             "labels": labels,
             "metrics": metrics,
             "params": {"min_cluster_size": min_cluster_size, "min_samples": min_samples}
         }
-    
+
     def _train_isolation_forest(self, X: np.ndarray, trial: Optional['optuna.Trial'] = None) -> Dict[str, Any]:
         """
         Train Isolation Forest for anomaly detection.
         """
         if not SKLEARN_AVAILABLE:
             return {"error": "sklearn not available"}
-        
+
         # Hyperparameters
         if trial:
             contamination = trial.suggest_float("contamination", 0.01, 0.3)
@@ -207,7 +207,7 @@ class ModelTrainer:
         else:
             contamination = 0.1
             n_estimators = 100
-        
+
         model = IsolationForest(
             contamination=contamination,
             n_estimators=n_estimators,
@@ -216,9 +216,9 @@ class ModelTrainer:
         )
         predictions = model.fit_predict(X)
         labels = (predictions == -1).astype(int)  # -1 = anomaly
-        
+
         n_anomalies = int(np.sum(labels))
-        
+
         return {
             "model": model,
             "labels": labels,
@@ -231,14 +231,14 @@ class ModelTrainer:
             "params": {"contamination": contamination, "n_estimators": n_estimators},
             "anomaly_indices": np.where(labels == 1)[0].tolist()
         }
-    
+
     def _train_lof(self, X: np.ndarray, trial: Optional['optuna.Trial'] = None) -> Dict[str, Any]:
         """
         Train Local Outlier Factor for anomaly detection.
         """
         if not SKLEARN_AVAILABLE:
             return {"error": "sklearn not available"}
-        
+
         # Hyperparameters
         if trial:
             n_neighbors = trial.suggest_int("n_neighbors", 5, 50)
@@ -246,7 +246,7 @@ class ModelTrainer:
         else:
             n_neighbors = 20
             contamination = 0.1
-        
+
         model = LocalOutlierFactor(
             n_neighbors=n_neighbors,
             contamination=contamination,
@@ -256,9 +256,9 @@ class ModelTrainer:
         model.fit(X)
         predictions = model.predict(X)
         labels = (predictions == -1).astype(int)  # -1 = anomaly
-        
+
         n_anomalies = int(np.sum(labels))
-        
+
         return {
             "model": model,
             "labels": labels,
@@ -271,7 +271,7 @@ class ModelTrainer:
             "params": {"n_neighbors": n_neighbors, "contamination": contamination},
             "anomaly_indices": np.where(labels == 1)[0].tolist()
         }
-    
+
     def _optimize_model(self, model_name: str, X: np.ndarray) -> Dict[str, Any]:
         """
         Use Optuna to find best hyperparameters for a model.
@@ -279,7 +279,7 @@ class ModelTrainer:
         if not OPTUNA_AVAILABLE:
             logger.warning("[ModelTrainer] Optuna not available, using defaults")
             return self._train_model(model_name, X, None)
-        
+
         train_func = {
             "dbscan": self._train_dbscan,
             "kmeans": self._train_kmeans,
@@ -287,50 +287,50 @@ class ModelTrainer:
             "isolation_forest": self._train_isolation_forest,
             "lof": self._train_lof
         }.get(model_name)
-        
+
         if not train_func:
             return {"error": f"Unknown model: {model_name}"}
-        
+
         def objective(trial):
             try:
                 result = train_func(X, trial)
                 if "error" in result:
                     return -1.0
-                
+
                 metrics = result.get("metrics", {})
-                
+
                 # For clustering: use silhouette
                 if model_name in ["dbscan", "kmeans", "hdbscan"]:
                     score = metrics.get("silhouette_score", -1)
                     return score if score is not None else -1
-                
+
                 # For anomaly detection: balance anomaly rate
                 else:
                     # Target anomaly rate around 5-15%
                     rate = metrics.get("anomaly_rate", 0)
                     target = 0.1
                     return -abs(rate - target)  # Closer to target is better
-                    
+
             except Exception as e:
                 logger.debug(f"Trial failed: {e}")
                 return -1.0
-        
+
         # Create and run study
         study = optuna.create_study(
             direction="maximize",
             sampler=TPESampler(seed=42)
         )
-        
+
         study.optimize(
             objective,
             n_trials=self.config.n_optuna_trials,
             timeout=self.config.optuna_timeout_seconds,
             show_progress_bar=True
         )
-        
+
         logger.info(f"[ModelTrainer] {model_name} best params: {study.best_params}")
         logger.info(f"[ModelTrainer] {model_name} best score: {study.best_value:.4f}")
-        
+
         # Train with best params
         best_result = train_func(X, None)  # Use defaults as base
         # Override with best params
@@ -340,9 +340,9 @@ class ModelTrainer:
             best_result["best_params"] = study.best_params
             best_result["best_score"] = study.best_value
             best_result["study_name"] = study.study_name
-        
+
         return best_result
-    
+
     def _train_model(self, model_name: str, X: np.ndarray, trial=None) -> Dict[str, Any]:
         """Train a single model"""
         train_funcs = {
@@ -352,12 +352,12 @@ class ModelTrainer:
             "isolation_forest": self._train_isolation_forest,
             "lof": self._train_lof
         }
-        
+
         func = train_funcs.get(model_name)
         if func:
             return func(X, trial)
         return {"error": f"Unknown model: {model_name}"}
-    
+
     def train(self, feature_path: str) -> ModelTrainerArtifact:
         """
         Execute model training pipeline.
@@ -370,46 +370,46 @@ class ModelTrainer:
         """
         logger.info(f"[ModelTrainer] Starting training: {feature_path}")
         start_time = datetime.now()
-        
+
         # Load features
         X = np.load(feature_path)
         logger.info(f"[ModelTrainer] Loaded features: {X.shape}")
-        
+
         # Start MLflow run
         mlflow_run_id = ""
         mlflow_experiment_id = ""
-        
+
         if MLFLOW_AVAILABLE:
             try:
                 run = mlflow.start_run()
                 mlflow_run_id = run.info.run_id
                 mlflow_experiment_id = run.info.experiment_id
-                
+
                 mlflow.log_param("n_samples", X.shape[0])
                 mlflow.log_param("n_features", X.shape[1])
                 mlflow.log_param("models", self.config.models_to_train)
             except Exception as e:
                 logger.warning(f"[ModelTrainer] MLflow run start error: {e}")
-        
+
         # Train all models
         trained_models = []
         best_model = None
         best_score = -float('inf')
-        
+
         for model_name in self.config.models_to_train:
             logger.info(f"[ModelTrainer] Training {model_name}...")
-            
+
             try:
                 result = self._optimize_model(model_name, X)
-                
+
                 if "error" in result:
                     logger.warning(f"[ModelTrainer] {model_name} error: {result['error']}")
                     continue
-                
+
                 # Save model
                 model_path = Path(self.config.output_directory) / f"{model_name}_model.joblib"
                 joblib.dump(result["model"], model_path)
-                
+
                 # Log to MLflow
                 if MLFLOW_AVAILABLE:
                     try:
@@ -418,7 +418,7 @@ class ModelTrainer:
                         mlflow.sklearn.log_model(result["model"], model_name)
                     except Exception as e:
                         logger.debug(f"MLflow log error: {e}")
-                
+
                 # Track results
                 model_info = {
                     "name": model_name,
@@ -427,28 +427,28 @@ class ModelTrainer:
                     "metrics": result.get("metrics", {})
                 }
                 trained_models.append(model_info)
-                
+
                 # Check if best (for clustering models)
                 score = result.get("metrics", {}).get("silhouette_score", -1)
                 if score and score > best_score:
                     best_score = score
                     best_model = model_info
-                
+
                 logger.info(f"[ModelTrainer] ✓ {model_name} complete")
-                
+
             except Exception as e:
                 logger.error(f"[ModelTrainer] {model_name} failed: {e}")
-        
+
         # End MLflow run
         if MLFLOW_AVAILABLE:
             try:
                 mlflow.end_run()
             except Exception:
                 pass
-        
+
         # Calculate duration
         duration = (datetime.now() - start_time).total_seconds()
-        
+
         # Get anomaly info from best anomaly detector
         n_anomalies = None
         anomaly_indices = None
@@ -456,7 +456,7 @@ class ModelTrainer:
             if model_info["name"] in ["isolation_forest", "lof"]:
                 n_anomalies = model_info["metrics"].get("n_anomalies")
                 break
-        
+
         # Build artifact
         artifact = ModelTrainerArtifact(
             best_model_name=best_model["name"] if best_model else "",
@@ -471,10 +471,10 @@ class ModelTrainer:
             training_duration_seconds=duration,
             optuna_study_name=None
         )
-        
+
         logger.info(f"[ModelTrainer] Training complete in {duration:.1f}s")
         logger.info(f"[ModelTrainer] Best model: {best_model['name'] if best_model else 'N/A'}")
-        
+
         # ============================================
         # TRAIN EMBEDDING-ONLY MODEL FOR LIVE INFERENCE
         # ============================================
@@ -483,12 +483,12 @@ class ModelTrainer:
         try:
             # Check if features include extra metadata (> 768 dims)
             if X.shape[1] > 768:
-                logger.info(f"[ModelTrainer] Training embedding-only model for Vectorizer Agent...")
-                
+                logger.info("[ModelTrainer] Training embedding-only model for Vectorizer Agent...")
+
                 # Extract only the first 768 dimensions (BERT embeddings)
                 X_embeddings_only = X[:, :768]
                 logger.info(f"[ModelTrainer] Embedding-only shape: {X_embeddings_only.shape}")
-                
+
                 # Train Isolation Forest on embeddings only
                 embedding_model = IsolationForest(
                     contamination=0.1,
@@ -497,16 +497,16 @@ class ModelTrainer:
                     n_jobs=-1
                 )
                 embedding_model.fit(X_embeddings_only)
-                
+
                 # Save to a dedicated path for the Vectorizer Agent
                 embedding_model_path = Path(self.config.output_directory) / "isolation_forest_embeddings_only.joblib"
                 joblib.dump(embedding_model, embedding_model_path)
-                
+
                 logger.info(f"[ModelTrainer] Embedding-only model saved: {embedding_model_path}")
-                logger.info(f"[ModelTrainer] This model is for real-time inference by Vectorizer Agent")
+                logger.info("[ModelTrainer] This model is for real-time inference by Vectorizer Agent")
             else:
                 logger.info(f"[ModelTrainer] Features are already embedding-only ({X.shape[1]} dims)")
         except Exception as e:
             logger.warning(f"[ModelTrainer] Embedding-only model training failed: {e}")
-        
+
         return artifact

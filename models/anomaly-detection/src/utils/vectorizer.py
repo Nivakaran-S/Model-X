@@ -37,13 +37,13 @@ class MultilingualVectorizer:
     - Sinhala: keshan/SinhalaBERTo (specialized)
     - Tamil: l3cube-pune/tamil-bert (specialized)
     """
-    
+
     MODEL_MAP = {
         "english": "distilbert-base-uncased",
         "sinhala": "keshan/SinhalaBERTo",
         "tamil": "l3cube-pune/tamil-bert"
     }
-    
+
     def __init__(self, models_cache_dir: Optional[str] = None, device: Optional[str] = None):
         """
         Initialize the multilingual vectorizer.
@@ -56,11 +56,11 @@ class MultilingualVectorizer:
             Path(__file__).parent.parent.parent / "models_cache"
         )
         Path(self.models_cache_dir).mkdir(parents=True, exist_ok=True)
-        
+
         # Set cache dir for HuggingFace
         os.environ["TRANSFORMERS_CACHE"] = self.models_cache_dir
         os.environ["HF_HOME"] = self.models_cache_dir
-        
+
         # Auto-detect device
         if device is None:
             if TRANSFORMERS_AVAILABLE and torch.cuda.is_available():
@@ -69,13 +69,13 @@ class MultilingualVectorizer:
                 self.device = "cpu"
         else:
             self.device = device
-        
+
         logger.info(f"[Vectorizer] Using device: {self.device}")
-        
+
         # Lazy load models
         self.models: Dict[str, Tuple] = {}  # {lang: (tokenizer, model)}
         self.fallback_model = None
-        
+
     def _load_model(self, language: str) -> Tuple:
         """
         Load language-specific model from cache or download.
@@ -85,14 +85,14 @@ class MultilingualVectorizer:
         """
         if language in self.models:
             return self.models[language]
-        
+
         model_name = self.MODEL_MAP.get(language, self.MODEL_MAP["english"])
-        
+
         if not TRANSFORMERS_AVAILABLE:
             raise RuntimeError("Transformers library not available")
-        
+
         logger.info(f"[Vectorizer] Loading model: {model_name}")
-        
+
         try:
             tokenizer = AutoTokenizer.from_pretrained(
                 model_name,
@@ -103,11 +103,11 @@ class MultilingualVectorizer:
                 cache_dir=self.models_cache_dir
             ).to(self.device)
             model.eval()
-            
+
             self.models[language] = (tokenizer, model)
             logger.info(f"[Vectorizer] ✓ Loaded {model_name} ({language})")
             return tokenizer, model
-            
+
         except Exception as e:
             logger.error(f"[Vectorizer] Failed to load {model_name}: {e}")
             # Fallback to English model
@@ -115,7 +115,7 @@ class MultilingualVectorizer:
                 logger.info("[Vectorizer] Falling back to English model")
                 return self._load_model("english")
             raise
-    
+
     def _get_embedding(self, text: str, tokenizer, model) -> np.ndarray:
         """
         Get embedding vector using mean pooling.
@@ -130,7 +130,7 @@ class MultilingualVectorizer:
         """
         if not TRANSFORMERS_AVAILABLE:
             raise RuntimeError("Transformers not available")
-        
+
         # Tokenize
         inputs = tokenizer(
             text,
@@ -139,23 +139,23 @@ class MultilingualVectorizer:
             max_length=512,
             padding=True
         ).to(self.device)
-        
+
         # Get embeddings
         with torch.no_grad():
             outputs = model(**inputs)
-        
+
         # Mean pooling over sequence length
         attention_mask = inputs["attention_mask"]
         hidden_states = outputs.last_hidden_state
-        
+
         # Mask and average
         mask_expanded = attention_mask.unsqueeze(-1).expand(hidden_states.size()).float()
         sum_embeddings = torch.sum(hidden_states * mask_expanded, 1)
         sum_mask = torch.clamp(mask_expanded.sum(1), min=1e-9)
         mean_embedding = sum_embeddings / sum_mask
-        
+
         return mean_embedding.cpu().numpy().flatten()
-    
+
     def vectorize(self, text: str, language: str = "english") -> np.ndarray:
         """
         Convert text to vector embedding.
@@ -169,11 +169,11 @@ class MultilingualVectorizer:
         """
         if not text or not text.strip():
             return np.zeros(768)
-        
+
         # Map unknown to english
         if language == "unknown":
             language = "english"
-        
+
         try:
             tokenizer, model = self._load_model(language)
             return self._get_embedding(text, tokenizer, model)
@@ -181,10 +181,10 @@ class MultilingualVectorizer:
             logger.error(f"[Vectorizer] Error vectorizing: {e}")
             # Return zeros as fallback
             return np.zeros(768)
-    
+
     def vectorize_batch(
-        self, 
-        texts: List[str], 
+        self,
+        texts: List[str],
         languages: Optional[List[str]] = None
     ) -> np.ndarray:
         """
@@ -199,14 +199,14 @@ class MultilingualVectorizer:
         """
         if languages is None:
             languages = ["english"] * len(texts)
-        
+
         embeddings = []
         for text, lang in zip(texts, languages):
             emb = self.vectorize(text, lang)
             embeddings.append(emb)
-        
+
         return np.array(embeddings)
-    
+
     def download_all_models(self):
         """Pre-download all language models"""
         for language in self.MODEL_MAP.keys():

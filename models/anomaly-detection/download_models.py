@@ -25,7 +25,7 @@ def download_file(url, destination):
     """Download file with progress bar"""
     response = requests.get(url, stream=True)
     total_size = int(response.headers.get('content-length', 0))
-    
+
     with open(destination, 'wb') as file, tqdm(
         desc=destination.name,
         total=total_size,
@@ -41,15 +41,15 @@ def main():
     logger.info("=" * 50)
     logger.info("⬇️  MODEL DOWNLOADER")
     logger.info("=" * 50)
-    
+
     # Ensure cache directory exists
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     logger.info(f"📂 Cache Directory: {CACHE_DIR}")
-    
+
     # 1. Download FastText Model
     logger.info("\n[1/2] Checking FastText Model (Language Detection)...")
     if not FASTTEXT_PATH.exists():
-        logger.info(f"   Downloading lid.176.bin...")
+        logger.info("   Downloading lid.176.bin...")
         try:
             download_file(FASTTEXT_URL, FASTTEXT_PATH)
             logger.info("   ✅ Download complete")
@@ -62,16 +62,16 @@ def main():
     logger.info("\n[2/2] Checking HuggingFace BERT Models (Vectorization)...")
     try:
         from src.utils.vectorizer import get_vectorizer
-        
+
         # Initialize vectorizer which handles HF downloads
         logger.info("   Initializing vectorizer to trigger downloads...")
         vectorizer = get_vectorizer(models_cache_dir=str(CACHE_DIR))
-        
+
         # Trigger downloads for all languages
         vectorizer.download_all_models()
-        
+
         logger.info("   ✅ All BERT models ready")
-        
+
     except ImportError:
         logger.error("   ❌ Could not import vectorizer. Install requirements first:")
         logger.error("      pip install -r requirements.txt")

@@ -6,7 +6,7 @@ distributing Python projects. It is used by setuptools
 of your project, such as its metadata, dependencies, and more
 '''
 
-from setuptools import find_packages, setup 
+from setuptools import find_packages, setup
 # this scans through all the folders and gets the folders that has the __init__ file
 # setup is reponsible of providing all the information about the project
 
@@ -25,7 +25,7 @@ def get_requirements()->List[str]:
             for line in lines:
                 requirement=line.strip()
                 ## Ignore empty lines and -e .
-                
+
                 if requirement and requirement != '-e .':
                     requirement_lst.append(requirement)
 

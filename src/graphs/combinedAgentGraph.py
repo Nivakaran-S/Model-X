@@ -63,52 +63,72 @@ class CombinedAgentGraphBuilder:
         def run_social_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke SocialAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking SocialAgent...")
-            result = social_graph.invoke({})
-            insights = result.get("domain_insights", [])
-            logger.info(
-                f"[CombinedGraph] SocialAgent returned {len(insights)} insights"
-            )
-            return {"domain_insights": insights}
+            try:
+                result = social_graph.invoke({})
+                insights = result.get("domain_insights", [])
+                logger.info(
+                    f"[CombinedGraph] SocialAgent returned {len(insights)} insights"
+                )
+                return {"domain_insights": insights}
+            except Exception as e:
+                logger.error(f"[CombinedGraph] SocialAgent FAILED: {e}")
+                return {"domain_insights": []}  # Graceful degradation
 
         def run_intelligence_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke IntelligenceAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking IntelligenceAgent...")
-            result = intelligence_graph.invoke({})
-            insights = result.get("domain_insights", [])
-            logger.info(
-                f"[CombinedGraph] IntelligenceAgent returned {len(insights)} insights"
-            )
-            return {"domain_insights": insights}
+            try:
+                result = intelligence_graph.invoke({})
+                insights = result.get("domain_insights", [])
+                logger.info(
+                    f"[CombinedGraph] IntelligenceAgent returned {len(insights)} insights"
+                )
+                return {"domain_insights": insights}
+            except Exception as e:
+                logger.error(f"[CombinedGraph] IntelligenceAgent FAILED: {e}")
+                return {"domain_insights": []}  # Graceful degradation
 
         def run_economical_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke EconomicalAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking EconomicalAgent...")
-            result = economical_graph.invoke({})
-            insights = result.get("domain_insights", [])
-            logger.info(
-                f"[CombinedGraph] EconomicalAgent returned {len(insights)} insights"
-            )
-            return {"domain_insights": insights}
+            try:
+                result = economical_graph.invoke({})
+                insights = result.get("domain_insights", [])
+                logger.info(
+                    f"[CombinedGraph] EconomicalAgent returned {len(insights)} insights"
+                )
+                return {"domain_insights": insights}
+            except Exception as e:
+                logger.error(f"[CombinedGraph] EconomicalAgent FAILED: {e}")
+                return {"domain_insights": []}  # Graceful degradation
 
         def run_political_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke PoliticalAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking PoliticalAgent...")
-            result = political_graph.invoke({})
-            insights = result.get("domain_insights", [])
-            logger.info(
-                f"[CombinedGraph] PoliticalAgent returned {len(insights)} insights"
-            )
-            return {"domain_insights": insights}
+            try:
+                result = political_graph.invoke({})
+                insights = result.get("domain_insights", [])
+                logger.info(
+                    f"[CombinedGraph] PoliticalAgent returned {len(insights)} insights"
+                )
+                return {"domain_insights": insights}
+            except Exception as e:
+                logger.error(f"[CombinedGraph] PoliticalAgent FAILED: {e}")
+                return {"domain_insights": []}  # Graceful degradation
 
         def run_meteorological_agent(state: CombinedAgentState) -> Dict[str, Any]:
             """Wrapper to invoke MeteorologicalAgent and extract domain_insights"""
             logger.info("[CombinedGraph] Invoking MeteorologicalAgent...")
-            result = meteorological_graph.invoke({})
-            insights = result.get("domain_insights", [])
-            logger.info(
-                f"[CombinedGraph] MeteorologicalAgent returned {len(insights)} insights"
-            )
-            return {"domain_insights": insights}
+            try:
+                result = meteorological_graph.invoke({})
+                insights = result.get("domain_insights", [])
+                logger.info(
+                    f"[CombinedGraph] MeteorologicalAgent returned {len(insights)} insights"
+                )
+                return {"domain_insights": insights}
+            except Exception as e:
+                logger.error(f"[CombinedGraph] MeteorologicalAgent FAILED: {e}")
+                return {"domain_insights": []}  # Graceful degradation
 
         # 3. Initialize Main Orchestrator Node
         orchestrator = CombinedAgentNode(self.llm)

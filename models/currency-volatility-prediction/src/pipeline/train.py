@@ -27,16 +27,16 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=100, help="Training epochs")
     parser.add_argument("--period", type=str, default="2y", help="Data period (1y, 2y, 5y)")
     parser.add_argument("--full", action="store_true", help="Run full pipeline (ingest + train + predict)")
-    
+
     args = parser.parse_args()
-    
+
     # Import from main.py (after path setup)
     from main import run_training, run_full_pipeline, run_data_ingestion
-    
+
     print("=" * 60)
     print("CURRENCY (USD/LKR) PREDICTION - TRAINING PIPELINE")
     print("=" * 60)
-    
+
     if args.full:
         run_full_pipeline()
     else:
@@ -49,10 +49,10 @@ if __name__ == "__main__":
         except FileNotFoundError:
             print("No existing data, running ingestion first...")
             run_data_ingestion(period=args.period)
-        
+
         # Run training
         run_training(epochs=args.epochs)
-    
+
     print("=" * 60)
     print("TRAINING COMPLETE!")
     print("=" * 60)

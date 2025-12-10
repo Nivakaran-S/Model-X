@@ -293,12 +293,12 @@ def load_playwright_storage_state_path(
         return direct_path
 
     logger.warning(f"[SESSION] ❌ Could not find session file for {site_name}.")
-    logger.warning(f"Checked locations:")
+    logger.warning("Checked locations:")
     logger.warning(f"  1. {src_utils_path}")
     logger.warning(f"  2. {cwd_path}")
     logger.warning(f"  3. {root_path}")
     logger.warning(
-        f"\n💡 Run 'python src/utils/session_manager.py' to create sessions."
+        "\n💡 Run 'python src/utils/session_manager.py' to create sessions."
     )
     return None
 
@@ -1538,7 +1538,7 @@ def scrape_cse_stock_impl(
             continue
 
     # ============ Final Fallback: Try CSE website again for any symbol ============
-    logger.info(f"[CSE] All yfinance attempts failed, trying CSE website fallback...")
+    logger.info("[CSE] All yfinance attempts failed, trying CSE website fallback...")
     cse_data = _scrape_cse_website_data(symbol)
 
     if cse_data and "aspi" in cse_data:
@@ -1726,9 +1726,7 @@ def scrape_government_gazette_impl(
                             pdf_content.append(
                                 {
                                     "language": pdf_info["language"],
-                                    "content": extracted_text[
-                                        :5000
-                                    ],  # Limit content length
+                                    "content": extracted_text,  # Full content - no truncation
                                     "source_url": pdf_info["url"],
                                 }
                             )

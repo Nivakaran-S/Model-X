@@ -4,9 +4,8 @@ Semantic similarity search using ChromaDB with sentence transformers
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 from datetime import datetime
-import uuid
 
 logger = logging.getLogger("chromadb_store")
 

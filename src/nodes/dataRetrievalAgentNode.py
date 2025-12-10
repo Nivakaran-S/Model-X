@@ -11,7 +11,6 @@ import json
 import uuid
 from typing import List
 from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import END
 from src.states.dataRetrievalAgentState import (
     DataRetrievalAgentState,
     ScrapingTask,
@@ -19,7 +18,6 @@ from src.states.dataRetrievalAgentState import (
     ClassifiedEvent,
 )
 from src.utils.tool_factory import create_tool_set
-from src.utils.utils import TOOL_MAPPING  # Keep for backward compatibility
 
 
 class DataRetrievalAgentNode:
@@ -204,7 +202,7 @@ If no tasks needed, return []
                 # Invoke LangChain tool with parameters
                 output = tool_func.invoke(current_task.parameters or {})
                 status = "success"
-                print(f"[TOOL NODE] ✓ Success")
+                print("[TOOL NODE] ✓ Success")
             except Exception as e:
                 output = f"Error: {str(e)}"
                 status = "failed"
@@ -242,7 +240,7 @@ If no tasks needed, return []
             "intelligence",
         ]
 
-        system_prompt = f"""
+        system_prompt = """
 You are a data classification expert for Roger.
 
 AVAILABLE AGENTS:
@@ -258,10 +256,10 @@ Task: Analyze the scraped data and:
 2. Choose the most appropriate agent
 
 Respond with JSON:
-{{
+{
   "summary": "<brief summary>",
   "target_agent": "<agent_name>"
-}}
+}
 """
 
         all_classified: List[ClassifiedEvent] = []
