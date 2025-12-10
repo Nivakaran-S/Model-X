@@ -15,7 +15,7 @@ import json
 import sqlite3
 import hashlib
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
@@ -110,7 +110,7 @@ class TrendingDetector:
 
     def _get_hour_bucket(self, dt: datetime = None) -> str:
         """Get the hour bucket string (YYYY-MM-DD-HH)"""
-        dt = dt or datetime.utcnow()
+        dt = dt or datetime.now(timezone.utc)
         return dt.strftime("%Y-%m-%d-%H")
 
     def record_mention(
@@ -130,7 +130,7 @@ class TrendingDetector:
             timestamp: When the mention occurred (default: now)
         """
         topic_hash = self._topic_hash(topic)
-        ts = timestamp or datetime.utcnow()
+        ts = timestamp or datetime.now(timezone.utc)
         hour_bucket = self._get_hour_bucket(ts)
 
         with sqlite3.connect(self.db_path) as conn:
@@ -180,7 +180,7 @@ class TrendingDetector:
             Momentum value (1.0 = normal, >2.0 = trending, >3.0 = spike)
         """
         topic_hash = self._topic_hash(topic)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         current_hour = self._get_hour_bucket(now)
 
         with sqlite3.connect(self.db_path) as conn:
@@ -230,7 +230,7 @@ class TrendingDetector:
         Returns:
             List of trending topics with their momentum values
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         current_hour = self._get_hour_bucket(now)
 
         trending = []
@@ -291,7 +291,7 @@ class TrendingDetector:
             List of hourly counts
         """
         topic_hash = self._topic_hash(topic)
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         history = []
         with sqlite3.connect(self.db_path) as conn:
@@ -320,7 +320,7 @@ class TrendingDetector:
         Args:
             days: Number of days to keep
         """
-        cutoff = datetime.utcnow() - timedelta(days=days)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
         cutoff_str = cutoff.isoformat()
         cutoff_bucket = self._get_hour_bucket(cutoff)
 

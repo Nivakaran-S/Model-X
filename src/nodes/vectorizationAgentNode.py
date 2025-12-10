@@ -6,7 +6,7 @@ Uses language-specific BERT models for Sinhala, Tamil, and English
 
 import sys
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List
 from pathlib import Path
 import numpy as np
@@ -794,7 +794,7 @@ Format your response in a clear, structured manner."""
                 "domain": "vectorization",
                 "category": "text_analysis",
                 "summary": f"Processed {len(embeddings)} texts with multilingual BERT models",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "severity": "low",
                 "impact_type": "analysis",
                 "confidence": 0.9,
@@ -820,7 +820,7 @@ Format your response in a clear, structured manner."""
                     "domain": "anomaly_detection",
                     "category": "ml_analysis",
                     "summary": f"ML Anomaly Detection: {len(anomalies)} anomalies found in {anomaly_results.get('total_analyzed', 0)} texts",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "severity": "high" if len(anomalies) > 5 else "medium",
                     "impact_type": "risk",
                     "confidence": 0.85,
@@ -840,7 +840,7 @@ Format your response in a clear, structured manner."""
                         "domain": "anomaly_detection",
                         "category": "anomaly",
                         "summary": f"Anomaly detected (score: {anomaly.get('anomaly_score', 0):.2f})",
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": datetime.now(timezone.utc).isoformat(),
                         "severity": (
                             "high"
                             if anomaly.get("anomaly_score", 0) > 0.7
@@ -863,7 +863,7 @@ Format your response in a clear, structured manner."""
                     "domain": "anomaly_detection",
                     "category": "system_info",
                     "summary": "ML model not trained yet - using severity-based fallback",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "severity": "low",
                     "impact_type": "info",
                     "confidence": 1.0,
@@ -878,7 +878,7 @@ Format your response in a clear, structured manner."""
                     "domain": "vectorization",
                     "category": "opportunity",
                     "summary": opp.get("description", "Opportunity detected"),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "severity": "medium",
                     "impact_type": "opportunity",
                     "confidence": opp.get("confidence", 0.7),
@@ -893,7 +893,7 @@ Format your response in a clear, structured manner."""
                     "domain": "vectorization",
                     "category": "threat",
                     "summary": threat.get("description", "Threat detected"),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "severity": "high",
                     "impact_type": "risk",
                     "confidence": threat.get("confidence", 0.7),
@@ -903,7 +903,7 @@ Format your response in a clear, structured manner."""
         # Final output
         final_output = {
             "batch_id": batch_id,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "total_texts": len(embeddings),
             "processing_stats": processing_stats,
             "expert_summary": expert_summary,
