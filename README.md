@@ -1,4 +1,4 @@
----
+﻿---
 title: Roger Intelligence Platform
 emoji: ⚡
 colorFrom: blue
@@ -28,10 +28,18 @@ A multi-agent AI system that aggregates intelligence from 47+ data sources to pr
 - Social Media Monitor (Reddit, Twitter, Facebook, Threads, BlueSky)
 - Political Intelligence (Gazette, Parliament, District Social Media)
 - Economic Analysis (CSE Stock Market + Technical Indicators)
-- Meteorological Alerts (DMC Weather + RiverNet + **FloodWatch Integration** 🆕)
+- Meteorological Alerts (DMC Weather + RiverNet + **FloodWatch Integration**)
 - Intelligence Agent (Brand Monitoring + Threat Detection + **User-Configurable Targets**)
 - Data Retrieval Orchestrator (Web Scraping)
 - Vectorization Agent (Multilingual BERT Embeddings + Anomaly Detection)
+
+✅ **Situational Awareness Dashboard**:
+- **CEB Power Status** - Load shedding / power outage monitoring
+- **Fuel Prices** - Petrol 92/95, Diesel, Kerosene (CEYPETCO)
+- **CBSL Economic Indicators** - Inflation, policy rates, forex reserves, USD/LKR
+- **Health Alerts** - Dengue case tracking, disease outbreak monitoring
+- **Commodity Prices** - 15 essential goods (rice, sugar, gas, eggs, etc.)
+- **Water Supply Status** - NWSDB disruption alerts
 
 ✅ **ML Anomaly Detection Pipeline** (Integrated into Graph):
 - Language-specific BERT models (Sinhala, Tamil, English)
@@ -40,31 +48,31 @@ A multi-agent AI system that aggregates intelligence from 47+ data sources to pr
 - Anomaly Detection (Isolation Forest, LOF)
 - MLflow + DagsHub tracking
 
-✅ **Weather Prediction ML Pipeline** 🆕:
+✅ **Weather Prediction ML Pipeline**:
 - LSTM Neural Network (30-day sequences)
 - Predicts: Temperature, Rainfall, Flood Risk, Severity
 - 21 weather stations → 25 districts
 - Airflow DAG runs daily at 4 AM
 
-✅ **Currency Prediction ML Pipeline** 🆕:
+✅ **Currency Prediction ML Pipeline**:
 - GRU Neural Network (optimized for 8GB RAM)
 - Predicts: USD/LKR exchange rate
 - Features: Technical indicators + CSE + Gold + Oil + USD Index
 - MLflow tracking + Airflow DAG at 4 AM
 
-✅ **Stock Price Prediction ML Pipeline** 🆕:
+✅ **Stock Price Prediction ML Pipeline**:
 - Multi-Architecture: LSTM, GRU, BiLSTM, BiGRU
 - Optuna hyperparameter tuning (30 trials per stock)
 - Per-stock best model selection
 - 10 top CSE stocks (JKH, COMB, DIAL, HNB, etc.)
 
-✅ **RAG-Powered Chatbot** 🆕:
+✅ **RAG-Powered Chatbot**:
 - Chat-history aware Q&A
 - Queries all ChromaDB intelligence collections
 - Domain filtering (political, economic, weather, social)
 - Floating chat UI in dashboard
 
-✅ **Trending/Velocity Detection** 🆕:
+✅ **Trending/Velocity Detection**:
 - SQLite-based topic frequency tracking (24-hour rolling window)
 - Momentum calculation: `current_hour / avg_last_6_hours`
 - Spike alerts when topic volume > 3x baseline
@@ -74,29 +82,29 @@ A multi-agent AI system that aggregates intelligence from 47+ data sources to pr
 - Live Intelligence Feed
 - Floating AI Chatbox
 - Weather Predictions Tab
-- **Live Satellite/Weather Map** (Windy.com) 🆕
-- **National Flood Threat Score** 🆕
-- **30-Year Historical Climate Analysis** 🆕
-- **Trending Topics & Spike Alerts** 🆕
-- **Enhanced Operational Indicators** 🆕 (infrastructure_health, regulatory_activity, investment_climate)
+- **Live Satellite/Weather Map** (Windy.com)
+- **National Flood Threat Score**
+- **30-Year Historical Climate Analysis**
+- **Trending Topics & Spike Alerts**
+- **Enhanced Operational Indicators** (infrastructure_health, regulatory_activity, investment_climate)
 - Operational Risk Radar
 - ML Anomaly Detection Display
 - Market Predictions with Moving Averages
 - Risk & Opportunity Classification
 
-✅ **Weather Data Scraper for ML Training** 🆕:
+✅ **Weather Data Scraper for ML Training**:
 - Open-Meteo API (free historical data)
 - NASA FIRMS (fire/heat detection)
 - All 25 districts coverage
 - Year-wise CSV export for model training
 
-✅ **Operational Dashboard Metrics** 🆕:
+✅ **Operational Dashboard Metrics**:
 - **Logistics Friction**: Average confidence of mobility/social domain risk events
 - **Compliance Volatility**: Average confidence of political domain risks
 - **Market Instability**: Average confidence of market/economical domain risks
 - **Opportunity Index**: Average confidence of opportunity-classified events
 
-✅ **Multi-District Province-Aware Event Categorization** 🆕:
+✅ **Multi-District Province-Aware Event Categorization**:
 - Events mentioning provinces are displayed in all constituent districts
 - Supports: Western, Southern, Central, Northern, Eastern, Sabaragamuwa, Uva, North Western, North Central provinces
 - Both frontend (MapView, DistrictInfoPanel) and backend are synchronized
@@ -126,7 +134,7 @@ A multi-agent AI system that aggregates intelligence from 47+ data sources to pr
 │                    │  (Rank & Dedupe)    │                              │
 │                    └─────────┬──────────┘                              │
 │                    ┌─────────▼──────────┐                              │
-│                    │  Vectorization     │ ← NEW                         │
+│                    │  Vectorization     │                          │
 │                    │  Agent (Optional)  │                              │
 │                    └─────────┬──────────┘                              │
 │                    ┌─────────▼──────────┐                              │
@@ -168,7 +176,7 @@ graph TD
 - Loop control with configurable intervals
 - Real-time WebSocket broadcasting
 
-**Architecture Improvements (v2.1):** 🆕
+**Architecture Improvements (v2.1):**
 - **Rate Limiting**: Domain-specific rate limits prevent anti-bot detection
   - Twitter: 15 RPM, LinkedIn: 10 RPM, News: 60 RPM
   - Thread-safe semaphores for max concurrent requests
@@ -226,7 +234,7 @@ graph TD
 ---
 
 ### 4. Meteorological Agent Graph (`meteorologicalAgentGraph.py`)
-**Weather & Disaster Monitoring + FloodWatch Integration** 🆕
+**Weather & Disaster Monitoring + FloodWatch Integration**
 
 ```
 ┌─────────────────────────────────────┐
@@ -242,13 +250,13 @@ graph TD
               │
               ▼
 ┌─────────────────────────────────────┐
-│    FloodWatch Historical Data 🆕    │
+│    FloodWatch Historical Data    │
 │   (30-year climate analysis)        │
 └─────────────┬───────────────────────┘
               │
               ▼
 ┌─────────────────────────────────────┐
-│    National Threat Calculator 🆕    │
+│    National Threat Calculator    │
 │   (Aggregated flood risk 0-100)     │
 └─────────────┬───────────────────────┘
               │
@@ -265,7 +273,7 @@ graph TD
 - 🟠 Warning: Take precautions
 - 🔴 Critical: Immediate action required
 
-**FloodWatch Features (New):**
+**FloodWatch Features:**
 | Feature | Description |
 |---------|-------------|
 | **Historical Analysis** | 30-year climate data (1995-2025) |
@@ -289,11 +297,11 @@ graph TD
 ---
 
 ### 6. Intelligence Agent Graph (`intelligenceAgentGraph.py`)
-**Brand & Threat Monitoring + User-Configurable Targets** 🆕
+**Brand & Threat Monitoring + User-Configurable Targets**
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│ Brand Monitor   │    │ Threat Scanner  │    │ User Targets 🆕 │
+│ Brand Monitor   │    │ Threat Scanner  │    │ User Targets │
 │ - Company news  │    │ - Security      │    │ - Custom keys   │
 │ - Competitor    │    │ - Compliance    │    │ - User profiles │
 │ - Market share  │    │ - Geopolitical  │    │ - Products      │
@@ -307,7 +315,7 @@ graph TD
                    └─────────────────────┘
 ```
 
-**User-Configurable Monitoring** 🆕:
+**User-Configurable Monitoring**:
 Users can define custom monitoring targets via the frontend settings panel or API:
 
 | Config Type | Description | Example |
@@ -353,7 +361,7 @@ DELETE /api/intel/config/remove?target_type=profile&value=CompetitorX&platform=t
 
 ---
 
-### 8. Vectorization Agent Graph (`vectorizationAgentGraph.py`) 🆕
+### 8. Vectorization Agent Graph (`vectorizationAgentGraph.py`)
 **6-Step Multilingual NLP Pipeline with Anomaly + Trending Detection**
 
 ```
@@ -383,7 +391,7 @@ DELETE /api/intel/config/remove?target_type=profile&value=CompetitorX&platform=t
                   │
                   ▼
 ┌─────────────────────────────────────────────────┐
-│ Step 4: Trending Detection 🆕                    │
+│ Step 4: Trending Detection                    │
 │ - Entity extraction (hashtags, proper nouns)    │
 │ - Momentum: current_hour / avg_last_6_hours     │
 │ - Spike alerts when momentum > 3x               │
@@ -413,7 +421,7 @@ DELETE /api/intel/config/remove?target_type=profile&value=CompetitorX&platform=t
 
 ---
 
-### 10. Weather Prediction Pipeline (`models/weather-prediction/`) 🆕
+### 10. Weather Prediction Pipeline (`models/weather-prediction/`)
 **LSTM-Based Multi-District Weather Forecasting**
 
 ```
@@ -464,7 +472,7 @@ python main.py --mode train --station COLOMBO
 
 ---
 
-### 11. Currency Prediction Pipeline (`models/currency-volatility-prediction/`) 🆕
+### 11. Currency Prediction Pipeline (`models/currency-volatility-prediction/`)
 **GRU-Based USD/LKR Exchange Rate Forecasting**
 
 ```
@@ -599,7 +607,7 @@ mlflow.sklearn.log_model(model, "model")
 
 ---
 
-## 🌧️ Weather Data Scraper (`scripts/scrape_weather_data.py`) 🆕
+## 🌧️ Weather Data Scraper (`scripts/scrape_weather_data.py`)
 
 **Historical weather data collection for ML model training**
 
@@ -713,8 +721,8 @@ python models/anomaly-detection/download_models.py
 | `/api/weather/predictions` | GET | All district forecasts |
 | `/api/weather/predictions/{district}` | GET | Single district |
 | `/api/weather/model/status` | GET | Weather model info |
-| `/api/weather/historical` | GET | 30-year climate analysis 🆕 |
-| `/api/weather/threat` | GET | National flood threat score 🆕 |
+| `/api/weather/historical` | GET | 30-year climate analysis |
+| `/api/weather/threat` | GET | National flood threat score |
 | `/api/currency/prediction` | GET | USD/LKR next-day forecast |
 | `/api/currency/history` | GET | Historical rates |
 | `/api/currency/model/status` | GET | Currency model info |
@@ -724,6 +732,12 @@ python models/anomaly-detection/download_models.py
 | `/api/rag/chat` | POST | Chat with RAG |
 | `/api/rag/stats` | GET | RAG system stats |
 | `/api/rag/clear` | POST | Clear chat history |
+| `/api/power` | GET | CEB power/load shedding status |
+| `/api/fuel` | GET | Current fuel prices |
+| `/api/economy` | GET | CBSL economic indicators |
+| `/api/health` | GET | Health alerts & dengue data |
+| `/api/commodities` | GET | Essential goods prices |
+| `/api/water` | GET | Water supply disruptions |
 
 ### WebSocket
 - `ws://localhost:8000/ws` - Real-time updates
@@ -750,7 +764,7 @@ astro dev start
 # Open http://localhost:8080
 ```
 
-### DAG: `weather_prediction_daily` 🆕
+### DAG: `weather_prediction_daily`
 
 ```
 ingest_data → train_models → generate_predictions → publish_predictions
@@ -764,7 +778,7 @@ ingest_data → train_models → generate_predictions → publish_predictions
 - Generate 25-district predictions
 - Save to JSON for API
 
-### DAG: `currency_prediction_daily` 🆕
+### DAG: `currency_prediction_daily`
 
 ```
 ingest_data → train_model → generate_prediction → publish_prediction
@@ -800,9 +814,9 @@ Roger-Ultimate/
 │   ├── storage/                   # ChromaDB, SQLite, Neo4j stores
 │   ├── rag.py                     # RAG chatbot
 │   └── utils/
-│       └── utils.py               # Tools incl. FloodWatch 🆕
+│       └── utils.py               # Tools incl. FloodWatch
 ├── scripts/
-│   └── scrape_weather_data.py     # Weather data scraper 🆕
+│   └── scrape_weather_data.py     # Weather data scraper
 ├── models/
 │   ├── anomaly-detection/         # ML Anomaly Pipeline
 │   │   ├── src/
@@ -825,7 +839,7 @@ Roger-Ultimate/
 │       ├── artifacts/             # Trained GRU model
 │       └── main.py                # CLI entry point
 ├── datasets/
-│   └── weather/                   # Scraped weather CSVs 🆕
+│   └── weather/                   # Scraped weather CSVs
 ├── frontend/
 │   └── app/
 │       ├── components/
@@ -833,16 +847,16 @@ Roger-Ultimate/
 │       │   │   ├── AnomalyDetection.tsx
 │       │   │   ├── WeatherPredictions.tsx
 │       │   │   ├── CurrencyPrediction.tsx
-│       │   │   ├── NationalThreatCard.tsx     # Flood threat score 🆕
-│       │   │   ├── HistoricalIntel.tsx        # 30-year climate 🆕
+│       │   │   ├── NationalThreatCard.tsx     # Flood threat score
+│       │   │   ├── HistoricalIntel.tsx        # 30-year climate
 │       │   │   └── ...
 │       │   ├── map/
 │       │   │   ├── MapView.tsx
-│       │   │   └── SatelliteView.tsx          # Windy.com embed 🆕
+│       │   │   └── SatelliteView.tsx          # Windy.com embed
 │       │   ├── FloatingChatBox.tsx            # RAG chat UI
 │       │   └── ...
 │       └── pages/
-│           └── Index.tsx                       # 7 tabs incl. SATELLITE 🆕
+│           └── Index.tsx                       # 7 tabs incl. SATELLITE
 ├── main.py                        # FastAPI backend
 ├── start.sh                       # Startup script
 └── requirements.txt
@@ -1034,3 +1048,4 @@ MIT License - Built for Production
 - **Optuna** - Hyperparameter optimization
 - **MLflow** - Experiment tracking
 - Sri Lankan government for open data sources
+

@@ -495,6 +495,12 @@ def run_graph_loop():
                                         main_event_loop
                                     )
 
+        except RuntimeError as e:
+            if "cannot schedule new futures after interpreter shutdown" in str(e):
+                logger.warning("[GRAPH THREAD] Interpreter shutting down, stopping graph loop gracefully")
+                break  # Exit the loop cleanly
+            else:
+                logger.error(f"[GRAPH THREAD] RuntimeError in cycle #{cycle_count}: {e}", exc_info=True)
         except Exception as e:
             logger.error(f"[GRAPH THREAD] Error in cycle #{cycle_count}: {e}", exc_info=True)
 
@@ -508,6 +514,8 @@ def run_graph_loop():
             logger.info(f"[GRAPH THREAD] Waiting {wait_time:.1f}s before next cycle...")
             # Use Event.wait() for interruptible sleep instead of time.sleep()
             shutdown_event.wait(timeout=wait_time)
+    
+    logger.info("[GRAPH THREAD] Graph loop stopped")
 
 
 
@@ -1676,6 +1684,7 @@ def get_weather_predictor():
     try:
         import importlib.util
         from pathlib import Path
+        import json
 
         # Use importlib.util for fully isolated import (avoids package collisions)
         weather_src = Path(__file__).parent / "models" / "weather-prediction" / "src"
@@ -1685,39 +1694,52 @@ def get_weather_predictor():
             logger.error(f"[WeatherAPI] predictor.py not found at {predictor_path}")
             return None
 
-        # First, ensure entity module is loadable
-        entity_path = weather_src / "entity" / "config_entity.py"
-        if entity_path.exists():
-            entity_spec = importlib.util.spec_from_file_location(
-                "weather_config_entity",
-                str(entity_path)
-            )
-            entity_module = importlib.util.module_from_spec(entity_spec)
-            sys.modules["weather_config_entity"] = entity_module
-            entity_spec.loader.exec_module(entity_module)
-
-        # Add weather src to path temporarily for relative imports
-        # sys is already imported at top of file
+        # CRITICAL: Remove any conflicting paths (currency-volatility-prediction/src)
+        # to avoid entity.config_entity collision
+        currency_src = str(Path(__file__).parent / "models" / "currency-volatility-prediction" / "src")
+        stock_src = str(Path(__file__).parent / "models" / "stock-price-prediction" / "src")
+        anomaly_src = str(Path(__file__).parent / "models" / "anomaly-detection" / "src")
+        
+        original_path = sys.path.copy()
+        sys.path = [p for p in sys.path if currency_src not in p and stock_src not in p and anomaly_src not in p]
+        
+        # CRITICAL: Clear cached entity modules that may have been imported from wrong path
+        modules_to_clear = [k for k in sys.modules.keys() if 'entity' in k.lower() or 'config_entity' in k.lower()]
+        saved_modules = {}
+        for mod_name in modules_to_clear:
+            saved_modules[mod_name] = sys.modules.pop(mod_name, None)
+        
+        # Add weather src to path FIRST for relative imports
         weather_src_str = str(weather_src)
         if weather_src_str not in sys.path:
             sys.path.insert(0, weather_src_str)
 
-        # Now load predictor module
-        spec = importlib.util.spec_from_file_location(
-            "weather_predictor_module",
-            str(predictor_path)
-        )
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        try:
+            # Now load predictor module
+            spec = importlib.util.spec_from_file_location(
+                "weather_predictor_module",
+                str(predictor_path)
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
 
-        _weather_predictor = module.WeatherPredictor()
-        logger.info("[WeatherAPI] ✓ Weather predictor initialized via isolated import")
+            _weather_predictor = module.WeatherPredictor()
+            logger.info("[WeatherAPI] ✓ Weather predictor initialized via isolated import")
+        finally:
+            # Restore original path
+            sys.path = original_path
+            # Restore saved modules (to avoid breaking other parts of the system)
+            for mod_name, mod in saved_modules.items():
+                if mod is not None:
+                    sys.modules[mod_name] = mod
+
         return _weather_predictor
+
 
     except Exception as e:
         logger.error(f"[WeatherAPI] Failed to initialize predictor: {e}")
         import traceback
-        logger.debug(traceback.format_exc())
+        logger.error(f"[WeatherAPI] Full traceback:\n{traceback.format_exc()}")
         return None
 
 

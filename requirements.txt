@@ -139,3 +139,4 @@ yfinance
 tensorflow
 streamlit
 plotly
+tf_keras

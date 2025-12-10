@@ -1,5 +1,5 @@
 import sys
-from src.logging import logger
+from src.log_utils import logger
 
 class NetworkSecurityException(Exception):
     def __init__(self,error_message,error_details:sys):
