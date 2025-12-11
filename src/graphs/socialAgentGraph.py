@@ -60,9 +60,9 @@ class SocialGraphBuilder:
 
         main_graph = StateGraph(SocialAgentState)
 
-        main_graph.add_node("trending_module", trending_subgraph.invoke)
-        main_graph.add_node("social_media_module", social_subgraph.invoke)
-        main_graph.add_node("feed_generation_module", feed_subgraph.invoke)
+        main_graph.add_node("trending_module", lambda state: trending_subgraph.invoke(state))
+        main_graph.add_node("social_media_module", lambda state: social_subgraph.invoke(state))
+        main_graph.add_node("feed_generation_module", lambda state: feed_subgraph.invoke(state))
         main_graph.add_node("feed_aggregator", node.aggregate_and_store_feeds)
 
         main_graph.set_entry_point("trending_module")

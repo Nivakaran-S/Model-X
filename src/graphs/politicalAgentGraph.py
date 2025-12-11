@@ -59,9 +59,9 @@ class PoliticalGraphBuilder:
 
         main_graph = StateGraph(PoliticalAgentState)
 
-        main_graph.add_node("official_sources_module", official_subgraph.invoke)
-        main_graph.add_node("social_media_module", social_subgraph.invoke)
-        main_graph.add_node("feed_generation_module", feed_subgraph.invoke)
+        main_graph.add_node("official_sources_module", lambda state: official_subgraph.invoke(state))
+        main_graph.add_node("social_media_module", lambda state: social_subgraph.invoke(state))
+        main_graph.add_node("feed_generation_module", lambda state: feed_subgraph.invoke(state))
         main_graph.add_node("feed_aggregator", node.aggregate_and_store_feeds)
 
         main_graph.set_entry_point("official_sources_module")

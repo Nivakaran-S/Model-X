@@ -11,7 +11,7 @@ pinned: false
 
 **Real-Time Situational Awareness for Sri Lanka**
 
-A multi-agent AI system that aggregates intelligence from 47+ data sources to provide risk analysis and opportunity detection for businesses operating in Sri Lanka.
+A multi-agent AI system that aggregates intelligence from **50+ data sources** to provide risk analysis and opportunity detection for businesses operating in Sri Lanka.
 
 ## 🌐 Live Demo
 
@@ -24,14 +24,14 @@ A multi-agent AI system that aggregates intelligence from 47+ data sources to pr
 
 ## 🎯 Key Features
 
-✅ **8 Domain Agents** running in parallel:
-- Social Media Monitor (Reddit, Twitter, Facebook, Threads, BlueSky)
-- Political Intelligence (Gazette, Parliament, District Social Media)
-- Economic Analysis (CSE Stock Market + Technical Indicators)
-- Meteorological Alerts (DMC Weather + RiverNet + **FloodWatch Integration**)
-- Intelligence Agent (Brand Monitoring + Threat Detection + **User-Configurable Targets**)
-- Data Retrieval Orchestrator (Web Scraping)
-- Vectorization Agent (Multilingual BERT Embeddings + Anomaly Detection)
+✅ **5 Domain Agents + 2 Orchestrators** running in parallel:
+- **Social Agent** - Reddit, Twitter, Facebook, Threads, BlueSky monitoring
+- **Political Agent** - Gazette, Parliament, District Social Media
+- **Economical Agent** - CSE Stock Market + Technical Indicators (SMA, EMA, RSI, MACD)
+- **Meteorological Agent** - DMC Weather + RiverNet + **FloodWatch Integration**
+- **Intelligence Agent** - Brand Monitoring + Threat Detection + **User-Configurable Targets**
+- **Combined Agent (Orchestrator)** - Fan-out/Fan-in coordination, LLM filtering, feed ranking
+- **Data Retrieval Agent** - Web scraping orchestration with anti-bot features
 
 ✅ **Situational Awareness Dashboard**:
 - **CEB Power Status** - Load shedding / power outage monitoring
@@ -109,6 +109,13 @@ A multi-agent AI system that aggregates intelligence from 47+ data sources to pr
 - Supports: Western, Southern, Central, Northern, Eastern, Sabaragamuwa, Uva, North Western, North Central provinces
 - Both frontend (MapView, DistrictInfoPanel) and backend are synchronized
 
+✅ **3-Tier Storage Architecture** with Deduplication:
+- **Tier 1: SQLite** - Fast hash-based exact match (microseconds)
+- **Tier 2: ChromaDB** - Semantic similarity search with sentence transformers (milliseconds)
+- **Tier 3: Neo4j Aura** - Knowledge graph for event relationships and entity tracking
+- Unified `StorageManager` orchestrates all backends
+- Deduplication prevents duplicate feeds across all domain agents
+
 ---
 
 ## 🏗️ System Architecture
@@ -184,6 +191,40 @@ graph TD
   - Failed agents return empty results, others continue
 - **Non-Blocking Refresh**: 60-second cycle with interruptible sleep
   - `threading.Event.wait()` instead of blocking `time.sleep()`
+
+### Storage Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         DOMAIN AGENTS (Parallel)                            │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐      │
+│  │ Social   │ │Political │ │Economic  │ │  Meteo   │ │ Intelligence │      │
+│  │ Agent    │ │ Agent    │ │ Agent    │ │  Agent   │ │    Agent     │      │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └──────┬───────┘      │
+│       └────────────┴────────────┴────────────┴──────────────┘              │
+│                                 │ Fan-In                                    │
+│                    ┌────────────▼─────────────┐                            │
+│                    │   CombinedAgentNode      │                            │
+│                    │   (LLM Filter + Rank)    │                            │
+│                    └────────────┬─────────────┘                            │
+└─────────────────────────────────┼───────────────────────────────────────────┘
+                                  │
+                    ┌─────────────▼──────────────┐
+                    │      StorageManager        │
+                    │   (3-Tier Deduplication)   │
+                    └─────────────┬──────────────┘
+          ┌───────────────────────┼──────────────────────────┐
+          │                       │                          │
+          ▼                       ▼                          ▼
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────────┐
+│     SQLite      │    │    ChromaDB      │    │      Neo4j Aura         │
+│   (Fast Cache)  │    │  (Vector Store)  │    │   (Knowledge Graph)     │
+│  ─────────────  │    │  ──────────────  │    │  ───────────────────    │
+│  Hash-based     │    │  Semantic search │    │  Event relationships    │
+│  Exact match    │    │  Similarity 0.85 │    │  Domain nodes           │
+│  ~microseconds  │    │  ~milliseconds   │    │  Entity tracking        │
+└─────────────────┘    └──────────────────┘    └─────────────────────────┘
+```
 
 ---
 
@@ -870,9 +911,20 @@ Roger-Ultimate/
 # LLM
 GROQ_API_KEY=your_groq_key
 
-# Database
-MONGO_DB_URL=mongodb+srv://...
-SQLITE_DB_PATH=./feed_cache.db
+# Neo4j (Knowledge Graph)
+NEO4J_URI=neo4j+s://your-instance.databases.neo4j.io
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_password
+NEO4J_ENABLED=true
+NEO4J_DATABASE=neo4j
+
+# ChromaDB (Vector Store)
+CHROMADB_PATH=./data/chromadb
+CHROMADB_COLLECTION=Roger_feeds
+CHROMADB_SIMILARITY_THRESHOLD=0.85
+
+# SQLite (Fast Cache)
+SQLITE_DB_PATH=./data/cache/feeds.db
 
 # MLflow (DagsHub)
 MLFLOW_TRACKING_URI=https://dagshub.com/...

@@ -60,9 +60,9 @@ class IntelligenceGraphBuilder:
 
         main_graph = StateGraph(IntelligenceAgentState)
 
-        main_graph.add_node("profile_monitoring_module", profile_subgraph.invoke)
-        main_graph.add_node("competitive_intelligence_module", intelligence_subgraph.invoke)
-        main_graph.add_node("feed_generation_module", feed_subgraph.invoke)
+        main_graph.add_node("profile_monitoring_module", lambda state: profile_subgraph.invoke(state))
+        main_graph.add_node("competitive_intelligence_module", lambda state: intelligence_subgraph.invoke(state))
+        main_graph.add_node("feed_generation_module", lambda state: feed_subgraph.invoke(state))
         main_graph.add_node("feed_aggregator", node.aggregate_and_store_feeds)
 
         main_graph.set_entry_point("profile_monitoring_module")
