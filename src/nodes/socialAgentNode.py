@@ -5,15 +5,35 @@ Monitors trending topics, events, people, social intelligence across geographic 
 
 Updated: Uses Tool Factory pattern for parallel execution safety.
 Each agent instance gets its own private set of tools.
+
+Updated: Now loads user-defined keywords and profiles from intel config.
 """
 
 import json
 import uuid
-from typing import Dict, Any
+import os
+from typing import Dict, Any, List
 from datetime import datetime
 from src.states.socialAgentState import SocialAgentState
 from src.utils.tool_factory import create_tool_set
 from src.llms.groqllm import GroqLLM
+
+
+def load_intel_config() -> dict:
+    """Load intel config from JSON file (same as main.py)."""
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "data", "intel_config.json")
+    default_config = {
+        "user_profiles": {"twitter": [], "facebook": [], "linkedin": []},
+        "user_keywords": [],
+        "user_products": []
+    }
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return default_config
 
 
 class SocialAgentNode:
@@ -22,6 +42,7 @@ class SocialAgentNode:
     Module 1: Trending Topics (Sri Lanka specific trends)
     Module 2: Social Media (Sri Lanka, Asia, World scopes)
     Module 3: Feed Generation (Categorize, Summarize, Format)
+    Module 4: User-Defined Keywords & Profiles (from frontend config)
 
     Thread Safety:
         Each SocialAgentNode instance creates its own private ToolSet,
@@ -39,6 +60,15 @@ class SocialAgentNode:
             self.llm = groq.get_llm()
         else:
             self.llm = llm
+
+        # Load user-defined intel config (keywords, profiles, products)
+        self.intel_config = load_intel_config()
+        self.user_keywords = self.intel_config.get("user_keywords", [])
+        self.user_profiles = self.intel_config.get("user_profiles", {})
+        self.user_products = self.intel_config.get("user_products", [])
+        
+        print(f"[SocialAgent] Loaded {len(self.user_keywords)} user keywords, "
+              f"{sum(len(v) for v in self.user_profiles.values())} profiles")
 
         # Geographic scopes
         self.geographic_scopes = {
@@ -374,6 +404,111 @@ class SocialAgentNode:
             print(f"  ⚠️ Reddit error: {e}")
 
         return {"worker_results": world_results, "social_media_results": world_results}
+
+    def collect_user_defined_targets(self, state: SocialAgentState) -> Dict[str, Any]:
+        """
+        Module 2D: Collect data for USER-DEFINED keywords and profiles.
+        These are configured via the frontend Intelligence Settings UI.
+        """
+        print("[MODULE 2D] Collecting User-Defined Targets")
+        
+        user_results = []
+        
+        # Reload config to get latest user settings
+        self.intel_config = load_intel_config()
+        self.user_keywords = self.intel_config.get("user_keywords", [])
+        self.user_profiles = self.intel_config.get("user_profiles", {})
+        self.user_products = self.intel_config.get("user_products", [])
+        
+        # Skip if no user config
+        if not self.user_keywords and not any(self.user_profiles.values()):
+            print("  ⏭️ No user-defined targets configured")
+            return {"worker_results": [], "user_target_results": []}
+        
+        # ============================================
+        # Scrape USER KEYWORDS across Twitter
+        # ============================================
+        if self.user_keywords:
+            print(f"  📝 Scraping {len(self.user_keywords)} user keywords...")
+            twitter_tool = self.tools.get("scrape_twitter")
+            
+            for keyword in self.user_keywords[:10]:  # Limit to 10 keywords
+                try:
+                    if twitter_tool:
+                        twitter_data = twitter_tool.invoke(
+                            {"query": keyword, "max_items": 5}
+                        )
+                        user_results.append({
+                            "source_tool": "scrape_twitter",
+                            "raw_content": str(twitter_data),
+                            "category": "user_keyword",
+                            "scope": "sri_lanka",
+                            "platform": "twitter",
+                            "keyword": keyword,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        })
+                        print(f"    ✓ Keyword: '{keyword}'")
+                except Exception as e:
+                    print(f"    ⚠️ Keyword '{keyword}' error: {e}")
+        
+        # ============================================
+        # Scrape USER PRODUCTS
+        # ============================================
+        if self.user_products:
+            print(f"  📦 Scraping {len(self.user_products)} user products...")
+            twitter_tool = self.tools.get("scrape_twitter")
+            
+            for product in self.user_products[:5]:  # Limit to 5 products
+                try:
+                    if twitter_tool:
+                        twitter_data = twitter_tool.invoke(
+                            {"query": f"{product} review OR {product} Sri Lanka", "max_items": 3}
+                        )
+                        user_results.append({
+                            "source_tool": "scrape_twitter",
+                            "raw_content": str(twitter_data),
+                            "category": "user_product",
+                            "scope": "sri_lanka",
+                            "platform": "twitter",
+                            "product": product,
+                            "timestamp": datetime.utcnow().isoformat(),
+                        })
+                        print(f"    ✓ Product: '{product}'")
+                except Exception as e:
+                    print(f"    ⚠️ Product '{product}' error: {e}")
+        
+        # ============================================
+        # Scrape USER TWITTER PROFILES
+        # ============================================
+        twitter_profiles = self.user_profiles.get("twitter", [])
+        if twitter_profiles:
+            print(f"  👤 Scraping {len(twitter_profiles)} Twitter profiles...")
+            twitter_tool = self.tools.get("scrape_twitter")
+            
+            for profile in twitter_profiles[:10]:  # Limit to 10 profiles
+                try:
+                    # Clean profile handle
+                    handle = profile.replace("@", "").strip()
+                    if twitter_tool:
+                        # Search for tweets mentioning this profile
+                        twitter_data = twitter_tool.invoke(
+                            {"query": f"from:{handle} OR @{handle}", "max_items": 5}
+                        )
+                        user_results.append({
+                            "source_tool": "scrape_twitter",
+                            "raw_content": str(twitter_data),
+                            "category": "user_profile",
+                            "scope": "sri_lanka",
+                            "platform": "twitter",
+                            "profile": f"@{handle}",
+                            "timestamp": datetime.utcnow().isoformat(),
+                        })
+                        print(f"    ✓ Profile: @{handle}")
+                except Exception as e:
+                    print(f"    ⚠️ Profile @{profile} error: {e}")
+        
+        print(f"  ✅ User targets: {len(user_results)} results collected")
+        return {"worker_results": user_results, "user_target_results": user_results}
 
     # ============================================
     # MODULE 3: FEED GENERATION

@@ -782,6 +782,116 @@ def get_national_threat_score():
         }
 
 # ============================================
+# INTEL CONFIG API - User Keywords & Profiles
+# ============================================
+
+# Global intel config (loaded from file)
+INTEL_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "intel_config.json")
+
+# Default config structure
+DEFAULT_INTEL_CONFIG = {
+    "user_profiles": {
+        "twitter": [],
+        "facebook": [],
+        "linkedin": []
+    },
+    "user_keywords": [],
+    "user_products": []
+}
+
+
+def load_intel_config() -> dict:
+    """Load intel config from JSON file."""
+    try:
+        if os.path.exists(INTEL_CONFIG_PATH):
+            with open(INTEL_CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        logger.warning(f"[Intel Config] Error loading config: {e}")
+    return DEFAULT_INTEL_CONFIG.copy()
+
+
+def save_intel_config(config: dict) -> bool:
+    """Save intel config to JSON file."""
+    try:
+        os.makedirs(os.path.dirname(INTEL_CONFIG_PATH), exist_ok=True)
+        with open(INTEL_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        return True
+    except Exception as e:
+        logger.error(f"[Intel Config] Error saving config: {e}")
+        return False
+
+
+# Load config on startup
+intel_config = load_intel_config()
+
+
+@app.get("/api/intel/config")
+def get_intel_config():
+    """
+    Get current intelligence configuration.
+    
+    Returns user-defined keywords, products, and social profiles to monitor.
+    """
+    global intel_config
+    intel_config = load_intel_config()  # Refresh from file
+    return {
+        "status": "success",
+        "config": intel_config
+    }
+
+
+class IntelConfigUpdate(BaseModel):
+    user_profiles: dict = None
+    user_keywords: list = None
+    user_products: list = None
+
+
+@app.post("/api/intel/config")
+def update_intel_config(config_update: IntelConfigUpdate):
+    """
+    Update intelligence configuration.
+    
+    Accepts user-defined keywords, products, and social profiles.
+    Changes take effect on the next agent collection cycle.
+    """
+    global intel_config
+    
+    try:
+        # Update fields if provided
+        if config_update.user_profiles is not None:
+            intel_config["user_profiles"] = config_update.user_profiles
+        if config_update.user_keywords is not None:
+            intel_config["user_keywords"] = config_update.user_keywords
+        if config_update.user_products is not None:
+            intel_config["user_products"] = config_update.user_products
+        
+        # Save to file
+        if save_intel_config(intel_config):
+            logger.info(f"[Intel Config] Updated: {len(intel_config.get('user_keywords', []))} keywords, "
+                       f"{sum(len(v) for v in intel_config.get('user_profiles', {}).values())} profiles")
+            return {
+                "status": "updated",
+                "config": intel_config
+            }
+        else:
+            return {"status": "error", "error": "Failed to save configuration"}
+    except Exception as e:
+        logger.error(f"[Intel Config] Update error: {e}")
+        return {"status": "error", "error": str(e)}
+
+
+def get_user_intel_config() -> dict:
+    """
+    Get the current intel config for use by agents.
+    This function is called by social agents to get user-defined keywords and profiles.
+    """
+    global intel_config
+    return intel_config
+
+
+# ============================================
 # SITUATIONAL AWARENESS API ENDPOINTS (NEW)
 # ============================================
 

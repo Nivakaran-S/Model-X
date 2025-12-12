@@ -51,25 +51,39 @@ class SocialGraphBuilder:
 
         return subgraph.compile()
 
+    def build_user_targets_subgraph(self, node: SocialAgentNode) -> StateGraph:
+        """Build subgraph for user-defined keywords and profiles."""
+        subgraph = StateGraph(SocialAgentState)
+        subgraph.add_node("collect_user_targets", node.collect_user_defined_targets)
+        subgraph.set_entry_point("collect_user_targets")
+        subgraph.add_edge("collect_user_targets", END)
+        return subgraph.compile()
+
     def build_graph(self):
         node = SocialAgentNode(self.llm)
 
         trending_subgraph = self.build_trending_subgraph(node)
         social_subgraph = self.build_social_media_subgraph(node)
+        user_targets_subgraph = self.build_user_targets_subgraph(node)
         feed_subgraph = self.build_feed_generation_subgraph(node)
 
         main_graph = StateGraph(SocialAgentState)
 
         main_graph.add_node("trending_module", lambda state: trending_subgraph.invoke(state))
         main_graph.add_node("social_media_module", lambda state: social_subgraph.invoke(state))
+        main_graph.add_node("user_targets_module", lambda state: user_targets_subgraph.invoke(state))
         main_graph.add_node("feed_generation_module", lambda state: feed_subgraph.invoke(state))
         main_graph.add_node("feed_aggregator", node.aggregate_and_store_feeds)
 
+        # Parallel entry points - all 3 modules start together
         main_graph.set_entry_point("trending_module")
         main_graph.set_entry_point("social_media_module")
+        main_graph.set_entry_point("user_targets_module")
 
+        # All modules converge to feed generation
         main_graph.add_edge("trending_module", "feed_generation_module")
         main_graph.add_edge("social_media_module", "feed_generation_module")
+        main_graph.add_edge("user_targets_module", "feed_generation_module")
         main_graph.add_edge("feed_generation_module", "feed_aggregator")
         main_graph.add_edge("feed_aggregator", END)
 
