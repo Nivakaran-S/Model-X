@@ -206,12 +206,12 @@ main_event_loop = None
 # Storage manager
 storage_manager = StorageManager()
 
-# WebSocket settings - RESILIENT for long scraping operations (60s+ graph cycles)
-# Increased intervals to prevent disconnections during lengthy scraping
-HEARTBEAT_INTERVAL = 45.0  # Send ping every 45s (was 25s)
-HEARTBEAT_TIMEOUT = 30.0   # Wait 30s for pong (was 10s) 
-HEARTBEAT_MISS_THRESHOLD = 4  # Allow 4 misses (was 3) = ~3 minutes tolerance
-SEND_TIMEOUT = 10.0  # Increased from 5s
+# WebSocket settings - ULTRA-RESILIENT for long scraping operations
+# Heavy graph cycles can take 2-3 minutes, so we need high tolerance
+HEARTBEAT_INTERVAL = 60.0  # Send ping every 60s (increased from 45s)
+HEARTBEAT_TIMEOUT = 45.0   # Wait 45s for pong (increased from 30s) 
+HEARTBEAT_MISS_THRESHOLD = 5  # Allow 5 misses = ~5 minutes tolerance
+SEND_TIMEOUT = 15.0  # Increased for slow networks/heavy load
 
 class ConnectionManager:
     """Manages active WebSocket with heartbeat"""
