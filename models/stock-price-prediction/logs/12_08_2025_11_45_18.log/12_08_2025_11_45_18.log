@@ -1,4 +1,0 @@
-[ 2025-12-08 11:46:44,370 ] 17 root - INFO - Initiate the data ingestion
-[ 2025-12-08 11:47:09,308 ] 185 yfinance - ERROR - 
-1 Failed download:
-[ 2025-12-08 11:47:09,308 ] 198 yfinance - ERROR - ['COMB-N0000.CM']: ConnectionError('Failed to perform, curl: (56) Connection closed abruptly. See https://curl.se/libcurl/c/libcurl-errors.html first for more details.')

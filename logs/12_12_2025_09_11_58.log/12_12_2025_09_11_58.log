@@ -1,0 +1,135 @@
+[ 2025-12-12 09:11:58,860 ] 45 root - INFO - 
+============================================================
+[ 2025-12-12 09:11:58,861 ] 46 root - INFO - ANOMALY DETECTION TRAINING PIPELINE
+[ 2025-12-12 09:11:58,861 ] 47 root - INFO - Started at: 2025-12-12 09:11:58
+[ 2025-12-12 09:11:58,861 ] 48 root - INFO - Models to train: ['dbscan', 'kmeans', 'hdbscan', 'isolation_forest', 'lof']
+[ 2025-12-12 09:11:58,861 ] 49 root - INFO - MLflow experiment: anomaly_detection_feeds
+[ 2025-12-12 09:11:58,861 ] 49 root - INFO - MLflow experiment: anomaly_detection_feeds
+[ 2025-12-12 09:11:58,861 ] 50 root - INFO - ============================================================
+
+[ 2025-12-12 09:11:58,862 ] 37 data_ingestion - INFO - [DataIngestion] Initialized
+[ 2025-12-12 09:11:58,863 ] 38 data_ingestion - INFO -   SQLite: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+[ 2025-12-12 09:11:58,863 ] 38 data_ingestion - INFO -   SQLite: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+[ 2025-12-12 09:11:58,863 ] 39 data_ingestion - INFO -   CSV Dir: C:\Users\LENOVO\Desktop\ModelX-Ultimate\datasets\political_feeds
+[ 2025-12-12 09:11:58,863 ] 39 data_ingestion - INFO -   CSV Dir: C:\Users\LENOVO\Desktop\ModelX-Ultimate\datasets\political_feeds
+[ 2025-12-12 09:11:58,863 ] 40 data_ingestion - INFO -   Output: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion
+[ 2025-12-12 09:11:58,863 ] 40 data_ingestion - INFO -   Output: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion
+[ 2025-12-12 09:11:58,863 ] 55 root - INFO - Starting data ingestion...
+[ 2025-12-12 09:11:58,863 ] 193 data_ingestion - INFO - [DataIngestion] Starting data ingestion...
+[ 2025-12-12 09:11:58,863 ] 193 data_ingestion - INFO - [DataIngestion] Starting data ingestion...
+[ 2025-12-12 09:11:58,863 ] 52 data_ingestion - WARNING - [DataIngestion] SQLite DB not found: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+[ 2025-12-12 09:11:58,893 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 0 records from economic_feeds_202512.csv
+[ 2025-12-12 09:11:58,923 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 33 records from intelligence_feeds_202512.csv
+[ 2025-12-12 09:11:58,923 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 33 records from intelligence_feeds_202512.csv
+[ 2025-12-12 09:11:58,948 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 13 records from political_feeds_202512.csv
+[ 2025-12-12 09:11:58,984 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 35 records from social_feeds_202512.csv
+[ 2025-12-12 09:11:58,985 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 35 records from social_feeds_202512.csv
+[ 2025-12-12 09:11:59,023 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 7 records from weather_feeds_202512.csv
+[ 2025-12-12 09:11:59,024 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 7 records from weather_feeds_202512.csv
+[ 2025-12-12 09:11:59,034 ] 115 data_ingestion - INFO - [DataIngestion] Total 88 records from 5 CSV files
+[ 2025-12-12 09:11:59,039 ] 143 data_ingestion - INFO - [DataIngestion] Deduplicated: removed 18 duplicates
+[ 2025-12-12 09:11:59,043 ] 182 data_ingestion - INFO - [DataIngestion] Filtered: removed 13 short texts
+[ 2025-12-12 09:11:59,043 ] 182 data_ingestion - INFO - [DataIngestion] Filtered: removed 13 short texts
+[ 2025-12-12 09:11:59,412 ] 235 data_ingestion - INFO - [DataIngestion] Saved 57 records to C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251212_091159.parquet
+[ 2025-12-12 09:11:59,412 ] 249 data_ingestion - INFO - [DataIngestion] \u2713 Complete: 57 records
+[ 2025-12-12 09:11:59,412 ] 249 data_ingestion - INFO - [DataIngestion] \u2713 Complete: 57 records
+[ 2025-12-12 09:11:59,413 ] 57 root - INFO - \u2713 Data ingestion completed
+[ 2025-12-12 09:11:59,413 ] 57 root - INFO - \u2713 Data ingestion completed
+[ 2025-12-12 09:11:59,454 ] 39 data_validation - INFO - [DataValidation] Initialized with schema: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\data_schema\schema.yaml
+[ 2025-12-12 09:11:59,454 ] 62 root - INFO - Starting data validation...
+[ 2025-12-12 09:11:59,455 ] 195 data_validation - INFO - [DataValidation] Validating: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251212_091159.parquet
+[ 2025-12-12 09:11:59,455 ] 39 data_validation - INFO - [DataValidation] Initialized with schema: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\data_schema\schema.yaml
+[ 2025-12-12 09:11:59,455 ] 62 root - INFO - Starting data validation...
+[ 2025-12-12 09:11:59,455 ] 195 data_validation - INFO - [DataValidation] Validating: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251212_091159.parquet
+[ 2025-12-12 09:12:00,458 ] 206 data_validation - INFO - [DataValidation] Loaded 57 records
+[ 2025-12-12 09:12:00,459 ] 206 data_validation - INFO - [DataValidation] Loaded 57 records
+[ 2025-12-12 09:12:00,464 ] 225 data_validation - INFO - [DataValidation] \u2713 All validations passed
+[ 2025-12-12 09:12:00,475 ] 260 data_validation - INFO - [DataValidation] \u2713 Complete: 57/57 valid records
+[ 2025-12-12 09:12:00,476 ] 66 root - INFO - \u2713 Data validation completed
+[ 2025-12-12 09:12:00,476 ] 260 data_validation - INFO - [DataValidation] \u2713 Complete: 57/57 valid records
+[ 2025-12-12 09:12:00,477 ] 66 root - INFO - \u2713 Data validation completed
+[ 2025-12-12 09:12:00,477 ] 73 vectorizer - INFO - [Vectorizer] Using device: cpu
+[ 2025-12-12 09:12:00,478 ] 73 vectorizer - INFO - [Vectorizer] Using device: cpu
+[ 2025-12-12 09:12:04,526 ] 66 data_transformation - WARNING - [DataTransformation] Vectorization API not available: HTTPConnectionPool(host='localhost', port=8001): Max retries exceeded with url: /health (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x000001EE7AA42900>: Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it'))
+[ 2025-12-12 09:12:04,527 ] 67 data_transformation - INFO - [DataTransformation] Using local vectorization (no LLM insights)
+[ 2025-12-12 09:12:04,527 ] 67 data_transformation - INFO - [DataTransformation] Using local vectorization (no LLM insights)
+[ 2025-12-12 09:12:04,527 ] 69 data_transformation - INFO - [DataTransformation] Initialized
+[ 2025-12-12 09:12:04,527 ] 69 data_transformation - INFO - [DataTransformation] Initialized
+[ 2025-12-12 09:12:04,527 ] 70 data_transformation - INFO -   Models cache: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\models_cache
+[ 2025-12-12 09:12:04,527 ] 70 data_transformation - INFO -   Models cache: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\models_cache
+[ 2025-12-12 09:12:04,527 ] 71 data_transformation - INFO -   Vectorization API: disabled (using local)
+[ 2025-12-12 09:12:04,527 ] 71 data_transformation - INFO -   Vectorization API: disabled (using local)
+[ 2025-12-12 09:12:04,527 ] 71 root - INFO - Starting data transformation...
+[ 2025-12-12 09:12:04,527 ] 71 root - INFO - Starting data transformation...
+[ 2025-12-12 09:12:04,527 ] 346 data_transformation - INFO - [DataTransformation] Starting transformation: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_validation\validated_data_20251212_091200.parquet
+[ 2025-12-12 09:12:04,527 ] 346 data_transformation - INFO - [DataTransformation] Starting transformation: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_validation\validated_data_20251212_091200.parquet
+[ 2025-12-12 09:12:04,534 ] 351 data_transformation - INFO - [DataTransformation] Loaded 57 records
+[ 2025-12-12 09:12:04,534 ] 351 data_transformation - INFO - [DataTransformation] Loaded 57 records
+[ 2025-12-12 09:12:04,534 ] 158 data_transformation - INFO - [DataTransformation] Detecting languages...
+[ 2025-12-12 09:12:04,534 ] 158 data_transformation - INFO - [DataTransformation] Detecting languages...
+[ 2025-12-12 09:12:04,537 ] 119 root - ERROR - \u2717 Pipeline failed: [Errno 22] Invalid argument
+[ 2025-12-12 09:12:04,543 ] 133 root - ERROR - Pipeline failed - check logs for details
+[ 2025-12-12 09:12:04,547 ] 173 data_transformation - INFO - [DataTransformation] Language distribution:
+[ 2025-12-12 09:12:04,547 ] 175 data_transformation - INFO -   english: 44 (77.2%)
+[ 2025-12-12 09:12:04,547 ] 175 data_transformation - INFO -   tamil: 12 (21.1%)
+[ 2025-12-12 09:12:04,547 ] 175 data_transformation - INFO -   sinhala: 1 (1.8%)
+[ 2025-12-12 09:12:04,547 ] 189 data_transformation - INFO - [DataTransformation] Extracting temporal features...
+[ 2025-12-12 09:12:04,556 ] 223 data_transformation - INFO - [DataTransformation] Extracting engagement features...
+[ 2025-12-12 09:12:04,559 ] 261 data_transformation - INFO - [DataTransformation] Extracting text features...
+[ 2025-12-12 09:12:04,564 ] 278 data_transformation - INFO - [DataTransformation] Vectorizing texts with BERT models...
+[ 2025-12-12 09:12:04,565 ] 94 vectorizer - INFO - [Vectorizer] Loading model: distilbert-base-uncased
+[ 2025-12-12 09:12:25,803 ] 108 vectorizer - INFO - [Vectorizer] \u2713 Loaded distilbert-base-uncased (english)
+[ 2025-12-12 09:12:33,654 ] 94 vectorizer - INFO - [Vectorizer] Loading model: l3cube-pune/tamil-bert
+[ 2025-12-12 09:12:36,984 ] 108 vectorizer - INFO - [Vectorizer] \u2713 Loaded l3cube-pune/tamil-bert (tamil)
+[ 2025-12-12 09:12:41,455 ] 94 vectorizer - INFO - [Vectorizer] Loading model: keshan/SinhalaBERTo
+[ 2025-12-12 09:12:47,515 ] 108 vectorizer - INFO - [Vectorizer] \u2713 Loaded keshan/SinhalaBERTo (sinhala)
+[ 2025-12-12 09:12:50,214 ] 306 data_transformation - INFO - [DataTransformation] Building feature matrix...
+[ 2025-12-12 09:12:50,236 ] 330 data_transformation - INFO - [DataTransformation] Feature matrix shape: (57, 776)
+[ 2025-12-12 09:12:50,252 ] 415 data_transformation - INFO - [DataTransformation] Saved language labels to languages_20251212_091250.npy
+[ 2025-12-12 09:12:50,256 ] 459 data_transformation - INFO - [DataTransformation] \u2713 Complete: (57, 776)
+[ 2025-12-12 09:12:50,256 ] 75 root - INFO - \u2713 Data transformation completed
+[ 2025-12-12 09:12:52,042 ] 103 model_trainer - INFO - [ModelTrainer] MLflow configured: https://dagshub.com/sliitguy/Model-X.mlflow
+[ 2025-12-12 09:12:52,043 ] 77 model_trainer - INFO - [ModelTrainer] Initialized
+[ 2025-12-12 09:12:52,043 ] 78 model_trainer - INFO -   Models to train: ['dbscan', 'kmeans', 'hdbscan', 'isolation_forest', 'lof']
+[ 2025-12-12 09:12:52,043 ] 79 model_trainer - INFO -   Optuna trials: 50
+[ 2025-12-12 09:12:52,043 ] 80 root - INFO - Starting model training...
+[ 2025-12-12 09:12:52,043 ] 371 model_trainer - INFO - [ModelTrainer] Starting training: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_transformation\features_20251212_091250.npy
+[ 2025-12-12 09:12:52,045 ] 376 model_trainer - INFO - [ModelTrainer] Loaded features: (57, 776)
+[ 2025-12-12 09:12:56,274 ] 400 model_trainer - INFO - [ModelTrainer] Training dbscan...
+[ 2025-12-12 09:12:56,274 ] 280 model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+[ 2025-12-12 09:13:23,341 ] 437 model_trainer - INFO - [ModelTrainer] \u2713 dbscan complete
+[ 2025-12-12 09:13:23,342 ] 400 model_trainer - INFO - [ModelTrainer] Training kmeans...
+[ 2025-12-12 09:13:23,342 ] 280 model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+[ 2025-12-12 09:13:51,502 ] 437 model_trainer - INFO - [ModelTrainer] \u2713 kmeans complete
+[ 2025-12-12 09:13:51,502 ] 400 model_trainer - INFO - [ModelTrainer] Training hdbscan...
+[ 2025-12-12 09:13:51,503 ] 280 model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+[ 2025-12-12 09:13:51,503 ] 406 model_trainer - WARNING - [ModelTrainer] hdbscan error: hdbscan not available
+[ 2025-12-12 09:13:51,503 ] 400 model_trainer - INFO - [ModelTrainer] Training isolation_forest...
+[ 2025-12-12 09:13:51,503 ] 280 model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+[ 2025-12-12 09:13:56,679 ] 437 model_trainer - INFO - [ModelTrainer] \u2713 isolation_forest complete
+[ 2025-12-12 09:13:56,680 ] 400 model_trainer - INFO - [ModelTrainer] Training lof...
+[ 2025-12-12 09:13:56,680 ] 280 model_trainer - WARNING - [ModelTrainer] Optuna not available, using defaults
+[ 2025-12-12 09:13:58,345 ] 437 model_trainer - INFO - [ModelTrainer] \u2713 lof complete
+[ 2025-12-12 09:13:58,724 ] 475 model_trainer - INFO - [ModelTrainer] Training complete in 66.7s
+[ 2025-12-12 09:13:58,724 ] 476 model_trainer - INFO - [ModelTrainer] Best model: kmeans
+[ 2025-12-12 09:13:58,724 ] 491 model_trainer - INFO - [ModelTrainer] Training per-language models on 57 samples...
+[ 2025-12-12 09:13:58,727 ] 501 model_trainer - INFO - [ModelTrainer] Loaded language labels from languages_20251212_091250.npy
+[ 2025-12-12 09:13:58,746 ] 528 model_trainer - INFO - [ModelTrainer] Training english model on 44 samples...
+[ 2025-12-12 09:13:59,103 ] 543 model_trainer - INFO - [ModelTrainer] \u2713 Saved: isolation_forest_english.joblib (44 samples)
+[ 2025-12-12 09:13:59,103 ] 545 model_trainer - WARNING - [ModelTrainer] Skipping sinhala: only 1 samples (min: 10)
+[ 2025-12-12 09:13:59,103 ] 528 model_trainer - INFO - [ModelTrainer] Training tamil model on 12 samples...
+[ 2025-12-12 09:13:59,395 ] 543 model_trainer - INFO - [ModelTrainer] \u2713 Saved: isolation_forest_tamil.joblib (12 samples)
+[ 2025-12-12 09:13:59,417 ] 553 model_trainer - INFO - [ModelTrainer] \u2713 Legacy model copied: isolation_forest_embeddings_only.joblib
+[ 2025-12-12 09:13:59,417 ] 555 model_trainer - INFO - [ModelTrainer] Per-language training complete: ['english', 'tamil']
+[ 2025-12-12 09:13:59,418 ] 84 root - INFO - \u2713 Model training completed
+[ 2025-12-12 09:13:59,418 ] 107 root - INFO - 
+============================================================
+[ 2025-12-12 09:13:59,418 ] 108 root - INFO - PIPELINE RESULTS
+[ 2025-12-12 09:13:59,418 ] 109 root - INFO - ============================================================
+[ 2025-12-12 09:13:59,418 ] 110 root - INFO - Status: success
+[ 2025-12-12 09:13:59,419 ] 111 root - INFO - Best model: kmeans
+[ 2025-12-12 09:13:59,419 ] 112 root - INFO - Anomalies detected: 6
+[ 2025-12-12 09:13:59,419 ] 113 root - INFO - MLflow run: 4b4db037330b4120af03a5aa39c37d94
+[ 2025-12-12 09:13:59,419 ] 114 root - INFO - ============================================================
+
+[ 2025-12-12 09:13:59,419 ] 116 root - INFO - \u2713 Pipeline completed successfully!

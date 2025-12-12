@@ -53,7 +53,7 @@ class TrainingPipeline:
         logger.info("=" * 50)
 
         ingestion = DataIngestion(self.config.data_ingestion)
-        artifact = ingestion.ingest()
+        artifact = ingestion.initiate_data_ingestion()
 
         if not artifact.is_data_available:
             raise ValueError("No data available for training")
@@ -67,7 +67,7 @@ class TrainingPipeline:
         logger.info("=" * 50)
 
         validation = DataValidation(self.config.data_validation)
-        artifact = validation.validate(ingestion_artifact.raw_data_path)
+        artifact = validation.initiate_data_validation(ingestion_artifact.raw_data_path)
 
         return artifact
 
@@ -78,7 +78,7 @@ class TrainingPipeline:
         logger.info("=" * 50)
 
         transformation = DataTransformation(self.config.data_transformation)
-        artifact = transformation.transform(validation_artifact.validated_data_path)
+        artifact = transformation.initiate_data_transformation(validation_artifact.validated_data_path)
 
         return artifact
 
@@ -89,7 +89,7 @@ class TrainingPipeline:
         logger.info("=" * 50)
 
         trainer = ModelTrainer(self.config.model_trainer)
-        artifact = trainer.train(transformation_artifact.feature_store_path)
+        artifact = trainer.initiate_model_trainer(transformation_artifact.feature_store_path)
 
         return artifact
 

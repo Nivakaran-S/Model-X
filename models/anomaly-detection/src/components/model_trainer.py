@@ -358,7 +358,7 @@ class ModelTrainer:
             return func(X, trial)
         return {"error": f"Unknown model: {model_name}"}
 
-    def train(self, feature_path: str) -> ModelTrainerArtifact:
+    def initiate_model_trainer(self, feature_path: str) -> ModelTrainerArtifact:
         """
         Execute model training pipeline.
         
@@ -476,37 +476,88 @@ class ModelTrainer:
         logger.info(f"[ModelTrainer] Best model: {best_model['name'] if best_model else 'N/A'}")
 
         # ============================================
-        # TRAIN EMBEDDING-ONLY MODEL FOR LIVE INFERENCE
+        # TRAIN PER-LANGUAGE MODELS FOR LIVE INFERENCE
         # ============================================
-        # The Vectorizer Agent only has 768-dim embeddings at inference time
-        # (no temporal/engagement features), so we train a separate model
+        # Different BERT models produce embeddings in different vector spaces.
+        # We train separate Isolation Forest models per language to avoid
+        # mixing incompatible embeddings.
         try:
             # Check if features include extra metadata (> 768 dims)
             if X.shape[1] > 768:
-                logger.info("[ModelTrainer] Training embedding-only model for Vectorizer Agent...")
-
-                # Extract only the first 768 dimensions (BERT embeddings)
-                X_embeddings_only = X[:, :768]
-                logger.info(f"[ModelTrainer] Embedding-only shape: {X_embeddings_only.shape}")
-
-                # Train Isolation Forest on embeddings only
-                embedding_model = IsolationForest(
-                    contamination=0.1,
-                    n_estimators=100,
-                    random_state=42,
-                    n_jobs=-1
-                )
-                embedding_model.fit(X_embeddings_only)
-
-                # Save to a dedicated path for the Vectorizer Agent
-                embedding_model_path = Path(self.config.output_directory) / "isolation_forest_embeddings_only.joblib"
-                joblib.dump(embedding_model, embedding_model_path)
-
-                logger.info(f"[ModelTrainer] Embedding-only model saved: {embedding_model_path}")
-                logger.info("[ModelTrainer] This model is for real-time inference by Vectorizer Agent")
+                X_embeddings = X[:, :768]  # Extract BERT embeddings only
             else:
-                logger.info(f"[ModelTrainer] Features are already embedding-only ({X.shape[1]} dims)")
+                X_embeddings = X
+
+            logger.info(f"[ModelTrainer] Training per-language models on {X_embeddings.shape[0]} samples...")
+
+            # Load language labels from the same directory as features
+            feature_dir = Path(feature_path).parent
+            lang_files = list(feature_dir.glob("languages_*.npy"))
+            
+            if lang_files:
+                # Get most recent language file
+                latest_lang_file = max(lang_files, key=lambda p: p.stem)
+                languages = np.load(latest_lang_file, allow_pickle=True)
+                logger.info(f"[ModelTrainer] Loaded language labels from {latest_lang_file.name}")
+            else:
+                # Fallback: try to load from transformed data parquet
+                parquet_files = list(feature_dir.glob("transformed_*.parquet"))
+                if parquet_files:
+                    import pandas as pd
+                    latest_parquet = max(parquet_files, key=lambda p: p.stem)
+                    df_temp = pd.read_parquet(latest_parquet)
+                    if "language" in df_temp.columns:
+                        languages = df_temp["language"].values
+                        logger.info(f"[ModelTrainer] Loaded {len(languages)} language labels from parquet")
+                    else:
+                        languages = np.array(["english"] * len(X_embeddings))
+                        logger.warning("[ModelTrainer] No language column in parquet, defaulting to english")
+                else:
+                    languages = np.array(["english"] * len(X_embeddings))
+                    logger.warning("[ModelTrainer] No language data found, defaulting to english")
+
+            # Train per-language models
+            MIN_SAMPLES_PER_LANGUAGE = 10
+            per_lang_models = {}
+
+            for lang in ["english", "sinhala", "tamil"]:
+                lang_mask = languages == lang
+                X_lang = X_embeddings[lang_mask]
+
+                if len(X_lang) >= MIN_SAMPLES_PER_LANGUAGE:
+                    logger.info(f"[ModelTrainer] Training {lang} model on {len(X_lang)} samples...")
+                    
+                    lang_model = IsolationForest(
+                        contamination=0.1,
+                        n_estimators=100,
+                        random_state=42,
+                        n_jobs=-1
+                    )
+                    lang_model.fit(X_lang)
+
+                    # Save per-language model
+                    model_path = Path(self.config.output_directory) / f"isolation_forest_{lang}.joblib"
+                    joblib.dump(lang_model, model_path)
+                    per_lang_models[lang] = str(model_path)
+
+                    logger.info(f"[ModelTrainer] ✓ Saved: isolation_forest_{lang}.joblib ({len(X_lang)} samples)")
+                else:
+                    logger.warning(f"[ModelTrainer] Skipping {lang}: only {len(X_lang)} samples (min: {MIN_SAMPLES_PER_LANGUAGE})")
+
+            # Also save a legacy "embeddings_only" model for backward compatibility (trained on English)
+            if "english" in per_lang_models:
+                import shutil
+                english_model_path = Path(per_lang_models["english"])
+                legacy_path = Path(self.config.output_directory) / "isolation_forest_embeddings_only.joblib"
+                shutil.copy(english_model_path, legacy_path)
+                logger.info(f"[ModelTrainer] ✓ Legacy model copied: isolation_forest_embeddings_only.joblib")
+
+            logger.info(f"[ModelTrainer] Per-language training complete: {list(per_lang_models.keys())}")
+
         except Exception as e:
-            logger.warning(f"[ModelTrainer] Embedding-only model training failed: {e}")
+            logger.warning(f"[ModelTrainer] Per-language model training failed: {e}")
+            import traceback
+            traceback.print_exc()
 
         return artifact
+

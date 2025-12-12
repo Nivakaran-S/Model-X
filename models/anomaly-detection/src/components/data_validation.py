@@ -182,7 +182,7 @@ class DataValidation:
 
         return errors
 
-    def validate(self, data_path: str) -> DataValidationArtifact:
+    def initiate_data_validation(self, data_path: str) -> DataValidationArtifact:
         """
         Execute data validation pipeline.
         

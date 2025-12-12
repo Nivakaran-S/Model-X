@@ -183,7 +183,7 @@ class DataIngestion:
 
         return df
 
-    def ingest(self) -> DataIngestionArtifact:
+    def initiate_data_ingestion(self) -> DataIngestionArtifact:
         """
         Execute data ingestion pipeline.
         
@@ -228,6 +228,9 @@ class DataIngestion:
         output_path = Path(self.config.output_directory) / f"ingested_data_{timestamp}.parquet"
 
         if is_data_available:
+            # Convert timestamp column to datetime to avoid parquet conversion error
+            if "timestamp" in combined_df.columns:
+                combined_df["timestamp"] = pd.to_datetime(combined_df["timestamp"], errors="coerce")
             combined_df.to_parquet(output_path, index=False)
             logger.info(f"[DataIngestion] Saved {total_records} records to {output_path}")
         else:

@@ -1,0 +1,7 @@
+errors: []
+input_path: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251211_121811.parquet
+invalid_records: 0
+total_records: 50
+valid_records: 50
+validation_status: true
+validation_timestamp: '20251211_121811'

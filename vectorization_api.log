@@ -1,4 +1,0 @@
-Traceback (most recent call last):
-  File "C:\Users\LENOVO\Desktop\ModelX2\ModelX-Final\src\api\vectorization_api.py", line 14, in <module>
-    from src.graphs.vectorizationAgentGraph import graph as vectorization_graph
-ModuleNotFoundError: No module named 'src'

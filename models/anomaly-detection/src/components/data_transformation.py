@@ -330,7 +330,7 @@ class DataTransformation:
         logger.info(f"[DataTransformation] Feature matrix shape: {feature_matrix.shape}")
         return feature_matrix
 
-    def transform(self, data_path: str) -> DataTransformationArtifact:
+    def initiate_data_transformation(self, data_path: str) -> DataTransformationArtifact:
         """
         Execute data transformation pipeline.
         Integrates with Vectorizer Agent Graph for LLM-enhanced processing.
@@ -408,6 +408,11 @@ class DataTransformation:
         # Save embeddings
         embeddings_path = Path(self.config.output_directory) / f"embeddings_{timestamp}.npy"
         np.save(embeddings_path, embeddings)
+
+        # Save language labels for per-language model training
+        languages_path = Path(self.config.output_directory) / f"languages_{timestamp}.npy"
+        np.save(languages_path, df["language"].values)
+        logger.info(f"[DataTransformation] Saved language labels to {languages_path.name}")
 
         # Save feature matrix
         features_path = Path(self.config.output_directory) / f"features_{timestamp}.npy"

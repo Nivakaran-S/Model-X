@@ -71,7 +71,7 @@ class ModelTrainerConfig:
     """Configuration for model training component"""
     # MLflow configuration
     mlflow_tracking_uri: str = field(default_factory=lambda: os.getenv(
-        "MLFLOW_TRACKING_URI", "https://dagshub.com/sliitguy/SecurityNetwork.mlflow"
+        "MLFLOW_TRACKING_URI", "https://dagshub.com/sliitguy/Model-X.mlflow"
     ))
     mlflow_username: str = field(default_factory=lambda: os.getenv(
         "MLFLOW_TRACKING_USERNAME", ""
