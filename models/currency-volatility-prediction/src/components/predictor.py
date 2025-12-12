@@ -62,7 +62,11 @@ class CurrencyPredictor:
         if not os.path.exists(model_path):
             raise FileNotFoundError(f"No trained model found at {model_path}")
 
-        self._model = load_model(model_path)
+        # Load with compile=False to avoid Keras 2->3 mse serialization issues
+        # Then recompile with standard metrics
+        self._model = load_model(model_path, compile=False)
+        self._model.compile(optimizer='adam', loss='mse', metrics=['mae'])
+        
         scalers = joblib.load(scaler_path)
 
         self._scalers = {

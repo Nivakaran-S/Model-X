@@ -4,6 +4,11 @@ LSTM-based Weather Prediction Model Trainer
 """
 import os
 import sys
+
+# Fix Windows console encoding issue with MLflow emoji output
+if sys.platform == 'win32':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 import logging
 import numpy as np
 import pandas as pd

@@ -1,87 +1,87 @@
 """
-models/currency-volatility-prediction/main.py
-Entry point for Currency Prediction Pipeline
-Can run data collection, training, or prediction independently
+Currency Volatility Prediction Pipeline - USD/LKR Training
+Follows stock-price-prediction pattern with structured artifact flow
 """
-import os
+from src.components.data_ingestion import CurrencyDataIngestion
+from src.components.model_trainer import CurrencyGRUTrainer
+from src.components.predictor import CurrencyPredictor
+from src.exception.exception import CurrencyPredictionException
+from src.logging.logger import logging
+from src.entity.config_entity import DataIngestionConfig, ModelTrainerConfig
+
 import sys
-import logging  # Import standard library BEFORE path manipulation
+import os
 import argparse
-from pathlib import Path
 from datetime import datetime
 
-# CRITICAL: Configure logging BEFORE adding src/ to path
-# (src/logging/ directory would otherwise shadow the standard module)
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("currency_prediction")
 
-# Setup paths - AFTER logging is configured
-PIPELINE_ROOT = Path(__file__).parent
-sys.path.insert(0, str(PIPELINE_ROOT / "src"))
+def train_currency(period: str = "2y", epochs: int = 100) -> dict:
+    """
+    Train the currency prediction model.
+    
+    Follows stock-price-prediction pattern with structured results.
+    
+    Args:
+        period: Data period for yfinance (1y, 2y, 5y)
+        epochs: Number of training epochs
+        
+    Returns:
+        dict with training results or error info
+    """
+    result = {"currency": "USD_LKR", "status": "failed"}
 
+    try:
+        logging.info(f"\n{'='*60}")
+        logging.info("CURRENCY PREDICTION PIPELINE - TRAINING")
+        logging.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        logging.info(f"{'='*60}")
 
-def run_data_ingestion(period: str = "2y"):
-    """Run data ingestion from yfinance."""
-    from components.data_ingestion import CurrencyDataIngestion
-    from entity.config_entity import DataIngestionConfig
+        # Step 1: Data Ingestion
+        logging.info("[USD_LKR] Starting data ingestion...")
+        config = DataIngestionConfig(history_period=period)
+        ingestion = CurrencyDataIngestion(config)
+        data_path = ingestion.ingest_all()
+        df = ingestion.load_existing(data_path)
+        logging.info(f"[USD_LKR] ✓ Data ingestion completed: {len(df)} records")
 
-    logger.info(f"Starting data ingestion ({period})...")
+        # Step 2: Model Training
+        logging.info("[USD_LKR] Starting model training...")
+        trainer_config = ModelTrainerConfig(epochs=epochs)
+        trainer = CurrencyGRUTrainer(trainer_config)
+        train_results = trainer.train(df=df, use_mlflow=True)
+        logging.info("[USD_LKR] ✓ Model training completed")
 
-    config = DataIngestionConfig(history_period=period)
-    ingestion = CurrencyDataIngestion(config)
+        result = {
+            "currency": "USD_LKR",
+            "status": "success",
+            "model_path": train_results["model_path"],
+            "test_mae": train_results["test_mae"],
+            "rmse": train_results["rmse"],
+            "direction_accuracy": train_results["direction_accuracy"],
+            "epochs_trained": train_results["epochs_trained"]
+        }
 
-    data_path = ingestion.ingest_all()
+        logging.info(f"[USD_LKR] ✓ Pipeline completed successfully!")
 
-    df = ingestion.load_existing(data_path)
+    except Exception as e:
+        logging.error(f"[USD_LKR] ✗ Pipeline failed: {str(e)}")
+        result = {
+            "currency": "USD_LKR",
+            "status": "failed",
+            "error": str(e)
+        }
 
-    logger.info("Data Ingestion Complete!")
-    logger.info(f"Total records: {len(df)}")
-    logger.info(f"Features: {len(df.columns)}")
-    logger.info(f"Date range: {df['date'].min()} to {df['date'].max()}")
-    logger.info(f"Latest rate: {df['close'].iloc[-1]:.2f} LKR/USD")
-
-    return data_path
-
-
-def run_training(epochs: int = 100):
-    """Run GRU model training."""
-    from components.data_ingestion import CurrencyDataIngestion
-    from components.model_trainer import CurrencyGRUTrainer
-    from entity.config_entity import ModelTrainerConfig
-
-    logger.info("Starting model training...")
-
-    # Load data
-    ingestion = CurrencyDataIngestion()
-    df = ingestion.load_existing()
-
-    logger.info(f"Loaded {len(df)} records with {len(df.columns)} features")
-
-    # Train
-    config = ModelTrainerConfig(epochs=epochs)
-    trainer = CurrencyGRUTrainer(config)
-
-    results = trainer.train(df=df, use_mlflow=False)  # Disabled due to Windows Unicode encoding issues
-
-    logger.info("\nTraining Results:")
-    logger.info(f"  MAE: {results['test_mae']:.4f} LKR")
-    logger.info(f"  RMSE: {results['rmse']:.4f} LKR")
-    logger.info(f"  Direction Accuracy: {results['direction_accuracy']*100:.1f}%")
-    logger.info(f"  Epochs: {results['epochs_trained']}")
-    logger.info(f"  Model saved: {results['model_path']}")
-
-    return results
+    return result
 
 
-def run_prediction():
-    """Run prediction for next day."""
-    from components.data_ingestion import CurrencyDataIngestion
-    from components.predictor import CurrencyPredictor
-
-    logger.info("Generating prediction...")
+def run_prediction() -> dict:
+    """
+    Run prediction for next day.
+    
+    Returns:
+        Prediction dictionary
+    """
+    logging.info("Generating prediction...")
 
     predictor = CurrencyPredictor()
 
@@ -89,70 +89,78 @@ def run_prediction():
         ingestion = CurrencyDataIngestion()
         df = ingestion.load_existing()
         prediction = predictor.predict(df)
+        logging.info("[USD_LKR] ✓ Prediction generated using trained model")
     except FileNotFoundError:
-        logger.warning("Model not trained, using fallback")
+        logging.warning("[USD_LKR] Model not trained, using fallback")
         prediction = predictor.generate_fallback_prediction()
     except Exception as e:
-        logger.error(f"Error: {e}")
+        logging.error(f"[USD_LKR] Error: {e}")
         prediction = predictor.generate_fallback_prediction()
 
     output_path = predictor.save_prediction(prediction)
 
     # Display
-    logger.info(f"\n{'='*50}")
-    logger.info(f"USD/LKR PREDICTION FOR {prediction['prediction_date']}")
-    logger.info(f"{'='*50}")
-    logger.info(f"Current Rate:   {prediction['current_rate']:.2f} LKR/USD")
-    logger.info(f"Predicted Rate: {prediction['predicted_rate']:.2f} LKR/USD")
-    logger.info(f"Expected Change: {prediction['expected_change_pct']:+.3f}%")
-    logger.info(f"Direction: {prediction['direction_emoji']} LKR {prediction['direction']}")
-    logger.info(f"Volatility: {prediction['volatility_class']}")
+    logging.info(f"\n{'='*50}")
+    logging.info(f"USD/LKR PREDICTION FOR {prediction['prediction_date']}")
+    logging.info(f"{'='*50}")
+    logging.info(f"Current Rate:   {prediction['current_rate']:.2f} LKR/USD")
+    logging.info(f"Predicted Rate: {prediction['predicted_rate']:.2f} LKR/USD")
+    logging.info(f"Expected Change: {prediction['expected_change_pct']:+.3f}%")
+    logging.info(f"Direction: {prediction['direction_emoji']} LKR {prediction['direction']}")
+    logging.info(f"Volatility: {prediction['volatility_class']}")
 
     if prediction.get('weekly_trend'):
-        logger.info(f"Weekly Trend: {prediction['weekly_trend']:+.2f}%")
+        logging.info(f"Weekly Trend: {prediction['weekly_trend']:+.2f}%")
     if prediction.get('monthly_trend'):
-        logger.info(f"Monthly Trend: {prediction['monthly_trend']:+.2f}%")
+        logging.info(f"Monthly Trend: {prediction['monthly_trend']:+.2f}%")
 
-    logger.info(f"{'='*50}")
-    logger.info(f"Saved to: {output_path}")
+    logging.info(f"{'='*50}")
+    logging.info(f"Saved to: {output_path}")
 
     return prediction
 
 
 def run_full_pipeline():
-    """Run the complete pipeline: ingest → train → predict."""
-    logger.info("=" * 60)
-    logger.info("CURRENCY PREDICTION PIPELINE - FULL RUN")
-    logger.info("=" * 60)
+    """
+    Run the complete pipeline: train → predict.
+    Following stock-price-prediction pattern.
+    """
+    logging.info("\n" + "="*70)
+    logging.info("CURRENCY PREDICTION PIPELINE - FULL RUN")
+    logging.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info("="*70 + "\n")
 
-    # Step 1: Data Ingestion
-    try:
-        run_data_ingestion(period="2y")
-    except Exception as e:
-        logger.error(f"Data ingestion failed: {e}")
-        return None
+    # Step 1: Training
+    result = train_currency(period="2y", epochs=100)
 
-    # Step 2: Training
-    try:
-        run_training(epochs=100)
-    except Exception as e:
-        logger.error(f"Training failed: {e}")
-
-    # Step 3: Prediction
+    # Step 2: Prediction
     prediction = run_prediction()
 
-    logger.info("=" * 60)
-    logger.info("PIPELINE COMPLETE!")
-    logger.info("=" * 60)
+    # Print summary
+    logging.info("\n" + "="*70)
+    logging.info("TRAINING SUMMARY")
+    logging.info("="*70)
+    
+    if result["status"] == "success":
+        logging.info(f"  ✓ USD_LKR: {result['model_path']}")
+        logging.info(f"       MAE: {result['test_mae']:.4f} LKR")
+        logging.info(f"       RMSE: {result['rmse']:.4f} LKR")
+        logging.info(f"       Direction Accuracy: {result['direction_accuracy']*100:.1f}%")
+    else:
+        logging.info(f"  ✗ USD_LKR: {result.get('error', 'Unknown error')[:50]}")
 
-    return prediction
+    logging.info("="*70)
+    logging.info(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    logging.info("="*70 + "\n")
+
+    return result, prediction
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Currency Prediction Pipeline")
     parser.add_argument(
         "--mode",
-        choices=["ingest", "train", "predict", "full"],
+        choices=["train", "predict", "full"],
         default="predict",
         help="Pipeline mode to run"
     )
@@ -171,11 +179,17 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.mode == "ingest":
-        run_data_ingestion(period=args.period)
-    elif args.mode == "train":
-        run_training(epochs=args.epochs)
-    elif args.mode == "predict":
-        run_prediction()
-    elif args.mode == "full":
-        run_full_pipeline()
+    try:
+        if args.mode == "train":
+            result = train_currency(period=args.period, epochs=args.epochs)
+            if result["status"] == "failed":
+                sys.exit(1)
+        elif args.mode == "predict":
+            run_prediction()
+        elif args.mode == "full":
+            result, prediction = run_full_pipeline()
+            if result["status"] == "failed":
+                sys.exit(1)
+    except Exception as e:
+        logging.error(f"Pipeline crashed: {e}")
+        raise CurrencyPredictionException(e, sys)

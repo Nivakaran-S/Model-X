@@ -67,7 +67,10 @@ class WeatherPredictor:
             logger.warning(f"[PREDICTOR] No model for {station_name}")
             return None, None
 
-        self._models[station_name] = load_model(model_path)
+        # Load with compile=False to avoid Keras 2->3 mse serialization issues
+        # Then recompile with standard metrics
+        self._models[station_name] = load_model(model_path, compile=False)
+        self._models[station_name].compile(optimizer='adam', loss='mse', metrics=['mae'])
         self._scalers[station_name] = joblib.load(scaler_path)
 
         return self._models[station_name], self._scalers[station_name]
