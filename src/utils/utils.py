@@ -8,7 +8,7 @@ Updated:
 - Captures ALL district/city rows from the forecast table.
 """
 from urllib.parse import quote
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 import os
 import logging
@@ -22,6 +22,11 @@ import yfinance as yf
 import re
 import time
 import random
+
+
+def utc_now() -> datetime:
+    """Return current UTC time (Python 3.12+ compatible)."""
+    return datetime.now(timezone.utc)
 
 # Optional Playwright import
 try:
@@ -475,7 +480,7 @@ def scrape_rivernet_impl(
 
     # Check cache
     if use_cache and _rivernet_cache_time:
-        cache_age = (datetime.utcnow() - _rivernet_cache_time).total_seconds() / 60
+        cache_age = (utc_now() - _rivernet_cache_time).total_seconds() / 60
         if cache_age < RIVERNET_CACHE_DURATION_MINUTES:
             logger.info(f"[RIVERNET] Using cached data ({cache_age:.1f} min old)")
             return _rivernet_cache
@@ -487,7 +492,7 @@ def scrape_rivernet_impl(
         return {
             "error": "Playwright required for rivernet.lk (Flutter SPA)",
             "suggestion": "Install playwright: pip install playwright && playwright install chromium",
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": utc_now().isoformat(),
         }
 
     logger.info("[RIVERNET] Starting river level data collection...")
@@ -496,7 +501,7 @@ def scrape_rivernet_impl(
         "rivers": [],
         "alerts": [],
         "summary": {},
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
         "source": "rivernet.lk",
     }
 
@@ -721,7 +726,7 @@ def scrape_rivernet_impl(
 
     # Update cache
     _rivernet_cache = results
-    _rivernet_cache_time = datetime.utcnow()
+    _rivernet_cache_time = utc_now()
 
     logger.info(
         f"[RIVERNET] Completed: {len(results['rivers'])} rivers, {len(results['alerts'])} alerts"
@@ -814,7 +819,7 @@ def tool_floodwatch_historical() -> Dict[str, Any]:
 
     # Check cache (24 hour TTL)
     if _floodwatch_historical_cache and _floodwatch_cache_time:
-        cache_age = (datetime.utcnow() - _floodwatch_cache_time).total_seconds() / 3600
+        cache_age = (utc_now() - _floodwatch_cache_time).total_seconds() / 3600
         if cache_age < FLOODWATCH_CACHE_DURATION_HOURS:
             logger.info("[FLOODWATCH] Returning cached historical data")
             return _floodwatch_historical_cache
@@ -826,7 +831,7 @@ def tool_floodwatch_historical() -> Dict[str, Any]:
     historical_data = {
         "source": "FloodWatch Sri Lanka / Meteorological Department",
         "period": "1995-2025 (30 Years)",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
         # Overall statistics
         "statistics": {
             "avg_annual_rainfall_mm": 2930,
@@ -877,7 +882,7 @@ def tool_floodwatch_historical() -> Dict[str, Any]:
 
     # Cache the data
     _floodwatch_historical_cache = historical_data
-    _floodwatch_cache_time = datetime.utcnow()
+    _floodwatch_cache_time = utc_now()
 
     return historical_data
 
@@ -945,7 +950,7 @@ def tool_calculate_national_threat(
         breakdown["alert_contribution"] = min(30, breakdown["alert_contribution"])
 
     # 3. Seasonal contribution (max 20 points)
-    current_month = datetime.utcnow().month
+    current_month = utc_now().month
     monsoon_months = {5: 15, 6: 18, 10: 15, 11: 18}  # High risk months
     inter_monsoon = {4: 8, 9: 8}  # Medium risk
 
@@ -987,7 +992,7 @@ def tool_calculate_national_threat(
             "high_risk_districts": high_risk_districts,
             "medium_risk_districts": medium_risk_districts,
         },
-        "calculated_at": datetime.utcnow().isoformat(),
+        "calculated_at": utc_now().isoformat(),
     }
 
 
@@ -1027,7 +1032,7 @@ def tool_ceb_power_status() -> Dict[str, Any]:
     
     # Check cache
     if _ceb_cache_time:
-        cache_age = (datetime.utcnow() - _ceb_cache_time).total_seconds() / 60
+        cache_age = (utc_now() - _ceb_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _ceb_cache:
             logger.info(f"[CEB] Using cached data ({cache_age:.1f} min old)")
             return _ceb_cache
@@ -1040,7 +1045,7 @@ def tool_ceb_power_status() -> Dict[str, Any]:
         "schedules": [],
         "announcements": [],
         "source": "ceb.lk",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
     }
     
     try:
@@ -1074,7 +1079,7 @@ def tool_ceb_power_status() -> Dict[str, Any]:
     
     # Update cache
     _ceb_cache = result
-    _ceb_cache_time = datetime.utcnow()
+    _ceb_cache_time = utc_now()
     
     return result
 
@@ -1092,7 +1097,7 @@ def tool_fuel_prices() -> Dict[str, Any]:
     
     # Check cache
     if _fuel_cache_time:
-        cache_age = (datetime.utcnow() - _fuel_cache_time).total_seconds() / 60
+        cache_age = (utc_now() - _fuel_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _fuel_cache:
             logger.info(f"[FUEL] Using cached data ({cache_age:.1f} min old)")
             return _fuel_cache
@@ -1111,7 +1116,7 @@ def tool_fuel_prices() -> Dict[str, Any]:
         },
         "last_revision": "2024-12-01",  # Last known revision date
         "source": "CEYPETCO",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
         "note": "Prices effective from last official announcement",
     }
     
@@ -1155,7 +1160,7 @@ def tool_fuel_prices() -> Dict[str, Any]:
     
     # Update cache
     _fuel_cache = result
-    _fuel_cache_time = datetime.utcnow()
+    _fuel_cache_time = utc_now()
     
     return result
 
@@ -1173,7 +1178,7 @@ def tool_cbsl_indicators() -> Dict[str, Any]:
     
     # Check cache
     if _cbsl_cache_time:
-        cache_age = (datetime.utcnow() - _cbsl_cache_time).total_seconds() / 60
+        cache_age = (utc_now() - _cbsl_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _cbsl_cache:
             logger.info(f"[CBSL] Using cached data ({cache_age:.1f} min old)")
             return _cbsl_cache
@@ -1209,7 +1214,7 @@ def tool_cbsl_indicators() -> Dict[str, Any]:
             },
         },
         "source": "cbsl.gov.lk",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
         "data_as_of": "2024-11",
     }
     
@@ -1244,7 +1249,7 @@ def tool_cbsl_indicators() -> Dict[str, Any]:
     
     # Update cache
     _cbsl_cache = result
-    _cbsl_cache_time = datetime.utcnow()
+    _cbsl_cache_time = utc_now()
     
     return result
 
@@ -1262,7 +1267,7 @@ def tool_health_alerts() -> Dict[str, Any]:
     
     # Check cache
     if _health_cache_time:
-        cache_age = (datetime.utcnow() - _health_cache_time).total_seconds() / 60
+        cache_age = (utc_now() - _health_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _health_cache:
             logger.info(f"[HEALTH] Using cached data ({cache_age:.1f} min old)")
             return _health_cache
@@ -1281,7 +1286,7 @@ def tool_health_alerts() -> Dict[str, Any]:
         "other_diseases": [],
         "advisories": [],
         "source": "health.gov.lk",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
     }
     
     try:
@@ -1317,7 +1322,7 @@ def tool_health_alerts() -> Dict[str, Any]:
             logger.info(f"[HEALTH] Fetched - Dengue cases: {result['dengue']['weekly_cases']}")
         
         # Add seasonal health advisory
-        current_month = datetime.utcnow().month
+        current_month = utc_now().month
         if current_month in [5, 6, 10, 11]:  # Monsoon = mosquito season
             result["advisories"].append({
                 "type": "seasonal",
@@ -1331,7 +1336,7 @@ def tool_health_alerts() -> Dict[str, Any]:
     
     # Update cache
     _health_cache = result
-    _health_cache_time = datetime.utcnow()
+    _health_cache_time = utc_now()
     
     return result
 
@@ -1349,7 +1354,7 @@ def tool_commodity_prices() -> Dict[str, Any]:
     
     # Check cache
     if _commodity_cache_time:
-        cache_age = (datetime.utcnow() - _commodity_cache_time).total_seconds() / 60
+        cache_age = (utc_now() - _commodity_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _commodity_cache:
             logger.info(f"[COMMODITY] Using cached data ({cache_age:.1f} min old)")
             return _commodity_cache
@@ -1376,7 +1381,7 @@ def tool_commodity_prices() -> Dict[str, Any]:
             {"name": "LP Gas (12.5kg)", "price": 4290, "unit": "LKR/cylinder", "change": 0, "category": "fuel"},
         ],
         "source": "Consumer Affairs Authority / Market Survey",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
         "summary": {
             "items_increased": 0,
             "items_decreased": 0,
@@ -1422,7 +1427,7 @@ def tool_commodity_prices() -> Dict[str, Any]:
     
     # Update cache
     _commodity_cache = result
-    _commodity_cache_time = datetime.utcnow()
+    _commodity_cache_time = utc_now()
     
     return result
 
@@ -1440,7 +1445,7 @@ def tool_water_supply_alerts() -> Dict[str, Any]:
     
     # Check cache
     if _water_cache_time:
-        cache_age = (datetime.utcnow() - _water_cache_time).total_seconds() / 60
+        cache_age = (utc_now() - _water_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _water_cache:
             logger.info(f"[WATER] Using cached data ({cache_age:.1f} min old)")
             return _water_cache
@@ -1452,7 +1457,7 @@ def tool_water_supply_alerts() -> Dict[str, Any]:
         "active_disruptions": [],
         "scheduled_maintenance": [],
         "source": "waterboard.lk / NWSDB",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
         "overall_supply": "stable",
     }
     
@@ -1505,7 +1510,7 @@ def tool_water_supply_alerts() -> Dict[str, Any]:
     
     # Update cache
     _water_cache = result
-    _water_cache_time = datetime.utcnow()
+    _water_cache_time = utc_now()
     
     return result
 
@@ -1523,7 +1528,7 @@ def tool_dmc_alerts() -> Dict[str, Any]:
         return {
             "source": url,
             "alerts": ["Failed to fetch alerts from DMC."],
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": utc_now().isoformat(),
         }
     soup = BeautifulSoup(resp.text, "html.parser")
     alerts: List[str] = []
@@ -1549,7 +1554,7 @@ def tool_dmc_alerts() -> Dict[str, Any]:
     return {
         "source": url,
         "alerts": alerts[:10],
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
     }
 
 
@@ -1716,7 +1721,7 @@ def tool_weather_nowcast(location: str = "Colombo") -> Dict[str, Any]:
         "location": "All Districts",
         "forecast": final_text,
         "source": base_url,
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
     }
 
 
@@ -1789,7 +1794,7 @@ def scrape_local_news_impl(
                         "headline": title,
                         "snippet": snippet,
                         "url": href,
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": utc_now().isoformat(),
                     }
                 )
                 if len(results) >= max_articles:
@@ -1998,7 +2003,7 @@ def scrape_cse_stock_impl(
                 "records": [],
                 "source": "cse.lk (direct scrape)",
                 "note": "Real-time data from Colombo Stock Exchange website",
-                "fetched_at": datetime.utcnow().isoformat(),
+                "fetched_at": utc_now().isoformat(),
             }
 
     # ============ Strategy 2: yfinance (Fallback) ============
@@ -2047,7 +2052,7 @@ def scrape_cse_stock_impl(
                 "summary": summary,
                 "records": records[-10:],
                 "source": "yahoo_finance",
-                "fetched_at": datetime.utcnow().isoformat(),
+                "fetched_at": utc_now().isoformat(),
             }
 
         except Exception as e_inner:
@@ -2067,7 +2072,7 @@ def scrape_cse_stock_impl(
             "summary": {"current_price": cse_data["aspi"].get("value", 0)},
             "records": [],
             "source": "cse.lk (fallback scrape)",
-            "fetched_at": datetime.utcnow().isoformat(),
+            "fetched_at": utc_now().isoformat(),
         }
 
     # All strategies failed
@@ -2077,7 +2082,7 @@ def scrape_cse_stock_impl(
         "error": f"Could not fetch data for {symbol}. Yahoo Finance has limited CSE coverage.",
         "attempted_symbols": symbols_to_try,
         "suggestion": "Try accessing cse.lk directly for real-time CSE data",
-        "fetched_at": datetime.utcnow().isoformat(),
+        "fetched_at": utc_now().isoformat(),
     }
 
 
@@ -2112,7 +2117,7 @@ def scrape_government_gazette_impl(
                 "title": "Failed to access gazette.lk",
                 "url": base_url,
                 "error": "Network request failed",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
         ]
 
@@ -2277,7 +2282,7 @@ def scrape_government_gazette_impl(
             "url": post_url_abs,
             "pdf_links": pdf_links,
             "extracted_content": pdf_content,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
         }
 
         # Add a summary if we have content
@@ -2295,7 +2300,7 @@ def scrape_government_gazette_impl(
                 "title": "No gazette entries found",
                 "url": base_url,
                 "note": "The website structure may have changed",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
         ]
 
@@ -2338,7 +2343,7 @@ def scrape_parliament_minutes_impl(
                 "title": "Parliament website unavailable",
                 "url": url,
                 "note": "Could not access parliament.lk. Site may be down.",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
         ]
 
@@ -2404,7 +2409,7 @@ def scrape_parliament_minutes_impl(
             "language": language,
             "document_id": doc_id,
             "link_text": link_text,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": utc_now().isoformat(),
         }
 
         # Avoid duplicates (same doc, different language links)
@@ -2445,7 +2450,7 @@ def scrape_parliament_minutes_impl(
                 {
                     "title": title,
                     "url": href_abs,
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": utc_now().isoformat(),
                 }
             )
 
@@ -2459,7 +2464,7 @@ def scrape_parliament_minutes_impl(
                 "url": url,
                 "keywords": keywords,
                 "note": "The website structure may have changed or no matching documents found.",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
         ]
 
@@ -2485,7 +2490,7 @@ def scrape_train_schedule_impl(
             {
                 "train": "Railway website unavailable",
                 "note": "Could not access railway.gov.lk",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
         ]
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -2518,7 +2523,7 @@ def scrape_train_schedule_impl(
             {
                 "train": "No train schedules found",
                 "note": "Railway schedule unavailable or no matches",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": utc_now().isoformat(),
             }
         ]
     return results
@@ -2634,7 +2639,7 @@ def scrape_twitter_trending_srilanka(
                 return {
                     "source": "twitter_playwright",
                     "trends": trends,
-                    "fetched_at": datetime.utcnow().isoformat(),
+                    "fetched_at": utc_now().isoformat(),
                 }
         except Exception as e:
             logger.debug(f"[TWITTER] Playwright attempt failed: {e}")
@@ -2651,7 +2656,7 @@ def scrape_twitter_trending_srilanka(
                 return {
                     "source": inst,
                     "trends": trends,
-                    "fetched_at": datetime.utcnow().isoformat(),
+                    "fetched_at": utc_now().isoformat(),
                 }
         except Exception:
             continue
@@ -3233,7 +3238,7 @@ def scrape_twitter(query: str = "Sri Lanka", max_items: int = 20):
                     "query": query,
                     "results": results,
                     "total_found": len(results),
-                    "fetched_at": datetime.utcnow().isoformat(),
+                    "fetched_at": utc_now().isoformat(),
                 },
                 default=str,
                 indent=2,

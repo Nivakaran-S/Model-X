@@ -15,13 +15,19 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Set, Optional
 import asyncio
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import sys
 import os
 import logging
 import threading
 import time
 import uuid  # CRITICAL: Was missing, needed for event_id generation
+
+
+def utc_now() -> datetime:
+    """Return current UTC time (Python 3.12+ compatible)."""
+    return datetime.now(timezone.utc)
+
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
@@ -183,7 +189,7 @@ current_state: Dict[str, Any] = {
         "avg_confidence": 0.0,
         "high_priority_count": 0,
         "total_events": 0,
-        "last_updated": datetime.utcnow().isoformat()
+        "last_updated": utc_now().isoformat()
     },
     "run_count": 0,
     "status": "initializing",
@@ -218,7 +224,7 @@ class ConnectionManager:
         async with self._lock:
             meta = {
                 "heartbeat_task": asyncio.create_task(self._heartbeat_loop(websocket)),
-                "last_pong": datetime.utcnow(),
+                "last_pong": utc_now(),
                 "misses": 0
             }
             self.active_connections[websocket] = meta
@@ -276,7 +282,7 @@ class ConnectionManager:
                             if meta is None:
                                 return
                             last_pong = meta.get("last_pong")
-                            if last_pong and (datetime.utcnow() - last_pong).total_seconds() < (HEARTBEAT_INTERVAL + HEARTBEAT_TIMEOUT):
+                            if last_pong and (utc_now() - last_pong).total_seconds() < (HEARTBEAT_INTERVAL + HEARTBEAT_TIMEOUT):
                                 pong_received = True
                                 meta['misses'] = 0
                                 break
@@ -463,7 +469,7 @@ def run_graph_loop():
                             severity = event_data.get("severity", "medium")
                             impact_type = event_data.get("impact_type", "risk")
                             confidence = event_data.get("confidence_score", event_data.get("confidence", 0.5))
-                            timestamp = event_data.get("timestamp", datetime.utcnow().isoformat())
+                            timestamp = event_data.get("timestamp", utc_now().isoformat())
 
                             # Check for duplicates
                             is_dup, _, _ = storage_manager.is_duplicate(summary)
@@ -525,7 +531,7 @@ async def database_polling_loop():
     Runs concurrently with graph thread.
     """
     global current_state
-    last_check = datetime.utcnow()
+    last_check = utc_now()
 
     logger.info("[DB_POLLER] Starting database polling loop")
 
@@ -535,7 +541,7 @@ async def database_polling_loop():
 
             # Get new feeds since last check
             new_feeds = storage_manager.get_feeds_since(last_check)
-            last_check = datetime.utcnow()
+            last_check = utc_now()
 
             if new_feeds:
                 logger.info(f"[DB_POLLER] Found {len(new_feeds)} new feeds")
@@ -556,7 +562,7 @@ async def database_polling_loop():
                     current_state['final_ranked_feed'] = unique_feeds + current_state.get('final_ranked_feed', [])
                     current_state['final_ranked_feed'] = current_state['final_ranked_feed'][:100]  # Keep last 100
                     current_state['status'] = 'operational'
-                    current_state['last_update'] = datetime.utcnow().isoformat()
+                    current_state['last_update'] = utc_now().isoformat()
 
                     # Mark first run as complete (frontend loading screen can now hide)
                     if not current_state.get('first_run_complete'):
@@ -1096,41 +1102,49 @@ def record_topic_mention(topic: str, source: str = "manual", domain: str = "gene
 # ============================================
 
 # Lazy-loaded anomaly detection components
-_anomaly_model = None
+_anomaly_models = {}  # {language: model}
 _vectorizer = None
 _language_detector = None
 
 
 def _load_anomaly_components():
-    """Load anomaly detection model and vectorizer"""
-    global _anomaly_model, _vectorizer, _language_detector
+    """Load per-language anomaly detection models and vectorizer"""
+    global _anomaly_models, _vectorizer, _language_detector
 
-    if _anomaly_model is not None:
+    if _anomaly_models:
         return True
 
     try:
         import joblib
         from pathlib import Path
 
-        # Model path
-        models_dir = Path(__file__).parent / "models" / "anomaly-detection" / "src" / "components"
+        # Model directories
         output_dir = Path(__file__).parent / "models" / "anomaly-detection" / "output"
+        artifacts_dir = Path(__file__).parent / "models" / "anomaly-detection" / "artifacts" / "model_trainer"
 
-        # Try to load isolation_forest model (best for anomaly detection)
-        model_paths = [
-            output_dir / "isolation_forest_model.joblib",
-            output_dir / "lof_model.joblib",
-            models_dir.parent / "output" / "isolation_forest_model.joblib",
-        ]
+        # Load per-language models
+        for lang in ["english", "sinhala", "tamil"]:
+            for search_dir in [artifacts_dir, output_dir]:
+                model_path = search_dir / f"isolation_forest_{lang}.joblib"
+                if model_path.exists():
+                    _anomaly_models[lang] = joblib.load(model_path)
+                    logger.info(f"[AnomalyAPI] Loaded {lang} model from {model_path.name}")
+                    break
 
-        for model_path in model_paths:
-            if model_path.exists():
-                _anomaly_model = joblib.load(model_path)
-                logger.info(f"[AnomalyAPI] Loaded model from {model_path}")
-                break
+        # Fallback to legacy model if no per-language models found
+        if not _anomaly_models:
+            legacy_paths = [
+                output_dir / "isolation_forest_embeddings_only.joblib",
+                output_dir / "isolation_forest_model.joblib",
+            ]
+            for legacy_path in legacy_paths:
+                if legacy_path.exists():
+                    _anomaly_models["english"] = joblib.load(legacy_path)
+                    logger.info(f"[AnomalyAPI] Loaded legacy model: {legacy_path.name}")
+                    break
 
-        if _anomaly_model is None:
-            logger.warning("[AnomalyAPI] No trained model found. Run training first.")
+        if not _anomaly_models:
+            logger.warning("[AnomalyAPI] No trained models found. Run training first.")
             return False
 
         # Load vectorizer and language detector
@@ -1140,7 +1154,7 @@ def _load_anomaly_components():
         _vectorizer = get_vectorizer()
         _language_detector = detect_language
 
-        logger.info("[AnomalyAPI] ✓ All anomaly components loaded")
+        logger.info(f"[AnomalyAPI] ✓ Loaded models for: {list(_anomaly_models.keys())}")
         return True
 
     except Exception as e:
@@ -1151,7 +1165,7 @@ def _load_anomaly_components():
 @app.post("/api/predict")
 def predict_anomaly(texts: List[str] = None, text: str = None):
     """
-    Run anomaly detection on text(s).
+    Run anomaly detection on text(s) using per-language models.
     
     Args:
         texts: List of texts to analyze
@@ -1185,7 +1199,7 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
                 "message": "Model not trained yet. Using default scores."
             }
 
-        # Vectorize texts
+        # Process texts with per-language models
         predictions = []
         for t in texts:
             try:
@@ -1195,15 +1209,32 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
                 # Vectorize
                 vector = _vectorizer.vectorize(t, lang)
 
-                # Predict
-                # Isolation Forest returns -1 for anomalies, 1 for normal
-                prediction = _anomaly_model.predict([vector])[0]
+                # Select appropriate model
+                if lang in _anomaly_models:
+                    model = _anomaly_models[lang]
+                    method = f"isolation_forest_{lang}"
+                elif "english" in _anomaly_models:
+                    model = _anomaly_models["english"]
+                    method = "isolation_forest_english_fallback"
+                else:
+                    # No model available
+                    predictions.append({
+                        "text": t[:100] + "..." if len(t) > 100 else t,
+                        "is_anomaly": False,
+                        "anomaly_score": 0.0,
+                        "language": lang,
+                        "method": "no_model"
+                    })
+                    continue
 
-                # Get anomaly score (decision_function returns negative for anomalies)
-                if hasattr(_anomaly_model, 'decision_function'):
-                    score = -_anomaly_model.decision_function([vector])[0]  # Invert so higher = more anomalous
-                elif hasattr(_anomaly_model, 'score_samples'):
-                    score = -_anomaly_model.score_samples([vector])[0]
+                # Predict: -1 = anomaly, 1 = normal
+                prediction = model.predict([vector])[0]
+
+                # Get anomaly score
+                if hasattr(model, 'decision_function'):
+                    score = -model.decision_function([vector])[0]
+                elif hasattr(model, 'score_samples'):
+                    score = -model.score_samples([vector])[0]
                 else:
                     score = 1.0 if prediction == -1 else 0.0
 
@@ -1212,7 +1243,7 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
                     "is_anomaly": prediction == -1,
                     "anomaly_score": float(score),
                     "language": lang,
-                    "method": "isolation_forest"
+                    "method": method
                 })
 
             except Exception as e:
@@ -1228,7 +1259,8 @@ def predict_anomaly(texts: List[str] = None, text: str = None):
             "predictions": predictions,
             "total": len(predictions),
             "anomalies_found": sum(1 for p in predictions if p.get("is_anomaly")),
-            "model_status": "loaded"
+            "model_status": "loaded",
+            "models_available": list(_anomaly_models.keys())
         }
 
     except Exception as e:
@@ -1302,8 +1334,10 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
                 "message": "Using severity + keyword scoring. Train ML model for advanced detection."
             }
 
-        # ML Model is loaded - use it for scoring
+        # ML Models are loaded - use per-language models for scoring
         anomalies = []
+        per_lang_counts = {"english": 0, "sinhala": 0, "tamil": 0}
+
         for feed in feeds:
             summary = feed.get("summary", "")
             if not summary:
@@ -1312,10 +1346,22 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
             try:
                 lang, _ = _language_detector(summary)
                 vector = _vectorizer.vectorize(summary, lang)
-                prediction = _anomaly_model.predict([vector])[0]
 
-                if hasattr(_anomaly_model, 'decision_function'):
-                    score = -_anomaly_model.decision_function([vector])[0]
+                # Select appropriate model
+                if lang in _anomaly_models:
+                    model = _anomaly_models[lang]
+                    method = f"isolation_forest_{lang}"
+                elif "english" in _anomaly_models:
+                    model = _anomaly_models["english"]
+                    method = "isolation_forest_english_fallback"
+                else:
+                    continue
+
+                per_lang_counts[lang] = per_lang_counts.get(lang, 0) + 1
+                prediction = model.predict([vector])[0]
+
+                if hasattr(model, 'decision_function'):
+                    score = -model.decision_function([vector])[0]
                 else:
                     score = 1.0 if prediction == -1 else 0.0
 
@@ -1327,7 +1373,8 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
                         **feed,
                         "anomaly_score": float(round(normalized_score, 3)),
                         "is_anomaly": prediction == -1,
-                        "language": lang
+                        "language": lang,
+                        "detection_method": method
                     })
 
                     if len(anomalies) >= limit:
@@ -1344,7 +1391,9 @@ def get_anomalies(limit: int = 20, threshold: float = 0.5):
             "anomalies": anomalies,
             "total": len(anomalies),
             "threshold": threshold,
-            "model_status": "ml_active"
+            "model_status": "ml_active",
+            "models_loaded": list(_anomaly_models.keys()),
+            "per_language_counts": per_lang_counts
         }
 
     except Exception as e:
@@ -2200,7 +2249,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     async with manager._lock:
                         meta = manager.active_connections.get(websocket)
                         if meta is not None:
-                            meta['last_pong'] = datetime.utcnow()
+                            meta['last_pong'] = utc_now()
                             meta['misses'] = 0
                     continue
             except json.JSONDecodeError:
