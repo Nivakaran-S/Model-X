@@ -10,7 +10,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 import logging
 
-PROJECT_ROOT = Path(__file__).parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
@@ -51,9 +51,19 @@ class MultiCollectionRetriever:
     COLLECTIONS = ["Roger_feeds"]
 
     def __init__(self, persist_directory: str = None):
-        self.persist_directory = persist_directory or os.getenv(
-            "CHROMADB_PATH", str(PROJECT_ROOT / "data" / "chromadb")
-        )
+        # Always use absolute path - resolve relative paths against PROJECT_ROOT
+        env_path = os.getenv("CHROMADB_PATH")
+        if persist_directory:
+            self.persist_directory = persist_directory
+        elif env_path:
+            # If env path is relative, resolve it against PROJECT_ROOT
+            env_path_obj = Path(env_path)
+            if not env_path_obj.is_absolute():
+                self.persist_directory = str(PROJECT_ROOT / env_path)
+            else:
+                self.persist_directory = env_path
+        else:
+            self.persist_directory = str(PROJECT_ROOT / "data" / "chromadb")
         self.client = None
         self.collections: Dict[str, Any] = {}
 
