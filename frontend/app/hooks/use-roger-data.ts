@@ -11,9 +11,10 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const WS_URL = API_BASE.replace('http', 'ws') + '/ws';
 
 // Timeouts for resilient connection
-const RECONNECT_DELAY = 3000;
+const RECONNECT_DELAY = 1000;  // Reduced from 3s to 1s for faster recovery
 const MAX_LOADING_TIME = 120000; // 2 minutes max loading time
-const INITIAL_FETCH_DELAY = 2000; // Fetch from REST after 2s if no WS data
+const INITIAL_FETCH_DELAY = 1000; // Fetch from REST after 1s if no WS data
+const FALLBACK_POLL_INTERVAL = 2000; // Poll REST every 2s when WS disconnected
 
 export interface RogerEvent {
   event_id: string;
@@ -96,6 +97,7 @@ export function useRogerData() {
   const wsRef = useRef<WebSocket | null>(null);
   const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialFetchDoneRef = useRef(false);
+  const lastDataTimeRef = useRef<number>(Date.now()); // Track when we last got data
 
   // Fetch rivernet data
   const fetchRiverData = useCallback(async () => {
@@ -213,8 +215,11 @@ export function useRogerData() {
         };
 
         websocket.onclose = () => {
-          console.log('[Roger] WebSocket disconnected. Reconnecting in 3s...');
+          console.log('[Roger] WebSocket disconnected. Reconnecting in 1s...');
           setIsConnected(false);
+
+          // IMMEDIATELY fetch from REST to prevent blank UI
+          fetchInitialData();
 
           // Reconnect after delay
           reconnectTimeout = setTimeout(() => {
@@ -288,12 +293,13 @@ export function useRogerData() {
     }
   }, [isConnected]);
 
-  // Fallback polling if WebSocket fails
+  // Fallback polling if WebSocket fails - more aggressive when disconnected
   useEffect(() => {
     if (isConnected) return;
 
-    const interval = setInterval(fetchData, 5000);
-    fetchData(); // Initial fetch
+    console.log('[Roger] WebSocket disconnected - starting aggressive REST polling');
+    const interval = setInterval(fetchData, FALLBACK_POLL_INTERVAL);
+    fetchData(); // Initial fetch immediately
 
     return () => clearInterval(interval);
   }, [isConnected, fetchData]);

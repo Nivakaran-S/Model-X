@@ -10,6 +10,7 @@ import WeatherPredictions from "../components/dashboard/WeatherPredictions";
 import CurrencyPrediction from "../components/dashboard/CurrencyPrediction";
 import NationalThreatCard from "../components/dashboard/NationalThreatCard";
 import HistoricalIntel from "../components/dashboard/HistoricalIntel";
+import TrendingTopics from "../components/dashboard/TrendingTopics";
 import SatelliteView from "../components/map/SatelliteView";
 import LoadingScreen from "../components/LoadingScreen";
 import { Activity, Map, Radio, BarChart3, Zap, Brain, Cloud, DollarSign, Satellite } from "lucide-react";
@@ -119,6 +120,7 @@ const Index = () => {
 
           <TabsContent value="overview" className="space-y-6 animate-fade-in">
             <DashboardOverview />
+            <TrendingTopics />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <StockPredictions />
               <CurrencyPrediction />

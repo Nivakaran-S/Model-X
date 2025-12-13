@@ -26,10 +26,12 @@ export const TrendingTopics: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
     useEffect(() => {
         const fetchTrending = async () => {
             try {
-                const response = await fetch('/api/trending');
+                const response = await fetch(`${API_BASE}/api/trending`);
                 const result = await response.json();
                 setData(result);
                 setError(null);

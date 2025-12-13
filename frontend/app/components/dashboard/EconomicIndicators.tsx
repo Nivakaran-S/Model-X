@@ -2,7 +2,7 @@
 
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { TrendingUp, TrendingDown, Minus, Landmark, DollarSign, Percent, Building2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Landmark, DollarSign, Percent, Building2, Radio } from "lucide-react";
 
 interface EconomicIndicatorsProps {
     economyData?: Record<string, unknown> | null;
@@ -15,12 +15,21 @@ const EconomicIndicators = ({ economyData }: EconomicIndicatorsProps) => {
     const exchangeRate = indicators?.exchange_rate || {};
     const forexReserves = indicators?.forex_reserves || {};
     const dataAsOf = economyData?.data_as_of as string;
+    const scrapeStatus = economyData?.scrape_status as string;
 
     const getTrendIcon = (trend: string) => {
         if (trend === "improving" || trend === "stable") return <TrendingUp className="w-3 h-3 text-success" />;
         if (trend === "declining") return <TrendingDown className="w-3 h-3 text-destructive" />;
         return <Minus className="w-3 h-3 text-muted-foreground" />;
     };
+
+    // Get the exchange rate - prefer mid rate, fallback to sell or buy
+    const usdLkr = (exchangeRate.usd_lkr as number) ||
+        (exchangeRate.usd_lkr_sell as number) ||
+        (exchangeRate.usd_lkr_buy as number) || 0;
+
+    // Get policy rate - prefer overnight, fallback to SDFR
+    const policyRate = (policyRates.overnight_rate as number) || (policyRates.sdfr as number) || 0;
 
     return (
         <Card className="p-4 bg-card border-border">
@@ -34,9 +43,17 @@ const EconomicIndicators = ({ economyData }: EconomicIndicatorsProps) => {
                         <p className="text-xs text-muted-foreground">CBSL Indicators</p>
                     </div>
                 </div>
-                <Badge className="bg-muted text-muted-foreground">
-                    {dataAsOf || "Latest"}
-                </Badge>
+                <div className="flex items-center gap-1">
+                    {scrapeStatus === "live" && (
+                        <Badge className="bg-success/20 text-success text-xs flex items-center gap-1">
+                            <Radio className="w-2 h-2 animate-pulse" />
+                            LIVE
+                        </Badge>
+                    )}
+                    <Badge className="bg-muted text-muted-foreground">
+                        {dataAsOf || "Latest"}
+                    </Badge>
+                </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -44,7 +61,7 @@ const EconomicIndicators = ({ economyData }: EconomicIndicatorsProps) => {
                 <div className="p-2 rounded-lg bg-muted/30 border border-border">
                     <div className="flex items-center gap-1 mb-1">
                         <Percent className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Inflation (YoY)</span>
+                        <span className="text-xs text-muted-foreground">CCPI Inflation</span>
                     </div>
                     <div className="flex items-center gap-1">
                         <span className="text-lg font-bold">{inflation.ccpi_yoy as number || 0}%</span>
@@ -59,18 +76,25 @@ const EconomicIndicators = ({ economyData }: EconomicIndicatorsProps) => {
                         <span className="text-xs text-muted-foreground">USD/LKR</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <span className="text-lg font-bold">{exchangeRate.usd_lkr as number || 0}</span>
+                        <span className="text-lg font-bold">{usdLkr.toFixed(2)}</span>
                         {getTrendIcon(exchangeRate.trend as string)}
                     </div>
+                    {/* Show Buy/Sell if available */}
+                    {((exchangeRate.usd_lkr_buy as number | undefined) || (exchangeRate.usd_lkr_sell as number | undefined)) && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                            Buy: {((exchangeRate.usd_lkr_buy as number | undefined)?.toFixed(2)) || "—"} |
+                            Sell: {((exchangeRate.usd_lkr_sell as number | undefined)?.toFixed(2)) || "—"}
+                        </p>
+                    )}
                 </div>
 
                 {/* Policy Rate */}
                 <div className="p-2 rounded-lg bg-muted/30 border border-border">
                     <div className="flex items-center gap-1 mb-1">
                         <Landmark className="w-3 h-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">SDFR Rate</span>
+                        <span className="text-xs text-muted-foreground">Policy Rate</span>
                     </div>
-                    <span className="text-lg font-bold">{policyRates.sdfr as number || 0}%</span>
+                    <span className="text-lg font-bold">{policyRate}%</span>
                 </div>
 
                 {/* Forex Reserves */}
@@ -80,7 +104,7 @@ const EconomicIndicators = ({ economyData }: EconomicIndicatorsProps) => {
                         <span className="text-xs text-muted-foreground">Reserves</span>
                     </div>
                     <div className="flex items-center gap-1">
-                        <span className="text-lg font-bold">${forexReserves.value as number || 0}B</span>
+                        <span className="text-lg font-bold">${(forexReserves.value as number) || 0}B</span>
                         {getTrendIcon(forexReserves.trend as string)}
                     </div>
                 </div>
@@ -94,3 +118,4 @@ const EconomicIndicators = ({ economyData }: EconomicIndicatorsProps) => {
 };
 
 export default EconomicIndicators;
+
