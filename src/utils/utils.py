@@ -1632,7 +1632,9 @@ def tool_commodity_prices() -> Dict[str, Any]:
 
             if rows:
                 # Get the latest date in the dataset
-                latest_date = max(row.get("date", "") for row in rows if row.get("date"))
+                latest_date = max(
+                    row.get("date", "") for row in rows if row.get("date")
+                )
                 data_date = latest_date
 
                 # Get the latest prices for each commodity (average across markets)
@@ -1649,7 +1651,9 @@ def tool_commodity_prices() -> Dict[str, Any]:
                 # Calculate average prices and build commodity list
                 for wfp_name, (display_name, category) in COMMODITY_MAPPING.items():
                     if wfp_name in latest_prices and latest_prices[wfp_name]:
-                        avg_price = sum(latest_prices[wfp_name]) / len(latest_prices[wfp_name])
+                        avg_price = sum(latest_prices[wfp_name]) / len(
+                            latest_prices[wfp_name]
+                        )
                         unit = "LKR/kg"
                         if "Eggs" in display_name:
                             unit = "LKR/each"
@@ -1660,18 +1664,22 @@ def tool_commodity_prices() -> Dict[str, Any]:
                         elif "Diesel" in display_name or "Petrol" in display_name:
                             unit = "LKR/L"
 
-                        commodities.append({
-                            "name": display_name,
-                            "price": round(avg_price, 2),
-                            "unit": unit,
-                            "category": category,
-                            "live": True,
-                            "wfp_commodity": wfp_name,
-                            "markets_sampled": len(latest_prices[wfp_name]),
-                        })
+                        commodities.append(
+                            {
+                                "name": display_name,
+                                "price": round(avg_price, 2),
+                                "unit": unit,
+                                "category": category,
+                                "live": True,
+                                "wfp_commodity": wfp_name,
+                                "markets_sampled": len(latest_prices[wfp_name]),
+                            }
+                        )
 
                 source_status = "live"
-                logger.info(f"[COMMODITY] ✓ Fetched {len(commodities)} live prices from WFP (data date: {latest_date})")
+                logger.info(
+                    f"[COMMODITY] ✓ Fetched {len(commodities)} live prices from WFP (data date: {latest_date})"
+                )
 
     except Exception as e:
         logger.warning(f"[COMMODITY] WFP API error: {e}")
@@ -1682,22 +1690,92 @@ def tool_commodity_prices() -> Dict[str, Any]:
         logger.info("[COMMODITY] Using baseline data - WFP API unavailable")
         source_status = "baseline"
         commodities = [
-            {"name": "White Rice (Nadu)", "price": 220, "unit": "LKR/kg", "category": "grains", "live": False},
-            {"name": "White Rice (Samba)", "price": 250, "unit": "LKR/kg", "category": "grains", "live": False},
-            {"name": "Red Rice", "price": 240, "unit": "LKR/kg", "category": "grains", "live": False},
-            {"name": "Sugar (White)", "price": 240, "unit": "LKR/kg", "category": "essentials", "live": False},
-            {"name": "Dhal (Lentils)", "price": 380, "unit": "LKR/kg", "category": "pulses", "live": False},
-            {"name": "Coconut Oil", "price": 680, "unit": "LKR/L", "category": "cooking", "live": False},
-            {"name": "Eggs (per unit)", "price": 48, "unit": "LKR/each", "category": "protein", "live": False},
-            {"name": "Chicken", "price": 1350, "unit": "LKR/kg", "category": "protein", "live": False},
-            {"name": "Big Onion", "price": 280, "unit": "LKR/kg", "category": "vegetables", "live": False},
-            {"name": "Potatoes", "price": 350, "unit": "LKR/kg", "category": "vegetables", "live": False},
+            {
+                "name": "White Rice (Nadu)",
+                "price": 220,
+                "unit": "LKR/kg",
+                "category": "grains",
+                "live": False,
+            },
+            {
+                "name": "White Rice (Samba)",
+                "price": 250,
+                "unit": "LKR/kg",
+                "category": "grains",
+                "live": False,
+            },
+            {
+                "name": "Red Rice",
+                "price": 240,
+                "unit": "LKR/kg",
+                "category": "grains",
+                "live": False,
+            },
+            {
+                "name": "Sugar (White)",
+                "price": 240,
+                "unit": "LKR/kg",
+                "category": "essentials",
+                "live": False,
+            },
+            {
+                "name": "Dhal (Lentils)",
+                "price": 380,
+                "unit": "LKR/kg",
+                "category": "pulses",
+                "live": False,
+            },
+            {
+                "name": "Coconut Oil",
+                "price": 680,
+                "unit": "LKR/L",
+                "category": "cooking",
+                "live": False,
+            },
+            {
+                "name": "Eggs (per unit)",
+                "price": 48,
+                "unit": "LKR/each",
+                "category": "protein",
+                "live": False,
+            },
+            {
+                "name": "Chicken",
+                "price": 1350,
+                "unit": "LKR/kg",
+                "category": "protein",
+                "live": False,
+            },
+            {
+                "name": "Big Onion",
+                "price": 280,
+                "unit": "LKR/kg",
+                "category": "vegetables",
+                "live": False,
+            },
+            {
+                "name": "Potatoes",
+                "price": 350,
+                "unit": "LKR/kg",
+                "category": "vegetables",
+                "live": False,
+            },
         ]
         data_date = utc_now().strftime("%Y-%m-%d")
 
     # Sort by category
-    category_order = {"grains": 1, "essentials": 2, "pulses": 3, "cooking": 4, "protein": 5, "vegetables": 6, "fuel": 7}
-    commodities.sort(key=lambda x: (category_order.get(x.get("category", ""), 99), x.get("name", "")))
+    category_order = {
+        "grains": 1,
+        "essentials": 2,
+        "pulses": 3,
+        "cooking": 4,
+        "protein": 5,
+        "vegetables": 6,
+        "fuel": 7,
+    }
+    commodities.sort(
+        key=lambda x: (category_order.get(x.get("category", ""), 99), x.get("name", ""))
+    )
 
     # Build result
     live_count = sum(1 for c in commodities if c.get("live", False))

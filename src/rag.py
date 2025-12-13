@@ -389,7 +389,7 @@ class RogerRAG:
             }
 
         current_date = datetime.now().strftime("%B %d, %Y")
-        
+
         # Build system prompt with context embedded
         system_content = f"""You are Roger, an AI intelligence analyst for Sri Lanka.
             
@@ -424,9 +424,7 @@ Context:
 
         try:
             chain = rag_prompt | self.llm | StrOutputParser()
-            answer = chain.invoke(
-                {"history": history_messages, "question": question}
-            )
+            answer = chain.invoke({"history": history_messages, "question": question})
 
             self.chat_history.append((question, answer))
 
