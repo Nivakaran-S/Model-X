@@ -1572,157 +1572,148 @@ def tool_commodity_prices() -> Dict[str, Any]:
     """
     Get prices for essential commodities in Sri Lanka.
 
-    Scrapes live price updates from multiple news sources.
-    Includes rice, sugar, dhal, milk powder, and other staples.
+    Fetches live prices from UN World Food Programme (WFP) Humanitarian Data Exchange.
+    Includes rice, sugar, lentils, eggs, chicken, coconut oil, onions, potatoes, and more.
 
     Returns:
-        Dict with commodity prices, units, and recent changes
+        Dict with commodity prices, units, and source information
     """
     global _commodity_cache, _commodity_cache_time
 
-    # Check cache
+    # Check cache (cache for 60 minutes since WFP data updates weekly)
     if _commodity_cache_time:
         cache_age = (utc_now() - _commodity_cache_time).total_seconds() / 60
-        if cache_age < SA_CACHE_DURATION_MINUTES and _commodity_cache:
+        if cache_age < 60 and _commodity_cache:
             logger.info(f"[COMMODITY] Using cached data ({cache_age:.1f} min old)")
             return _commodity_cache
 
-    logger.info("[COMMODITY] Fetching live commodity prices from news sources...")
+    logger.info("[COMMODITY] Fetching live commodity prices from WFP HDX...")
 
-    # Baseline commodity prices (LKR) - these are reference values
-    # Will be updated if live data is found from news sources
-    commodities = [
-        {"name": "White Rice (Nadu)", "price": 220, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
-        {"name": "White Rice (Samba)", "price": 250, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
-        {"name": "Red Rice", "price": 240, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
-        {"name": "Wheat Flour", "price": 195, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
-        {"name": "Sugar (White)", "price": 240, "unit": "LKR/kg", "change": 0, "category": "essentials", "live": False},
-        {"name": "Dhal (Mysore)", "price": 510, "unit": "LKR/kg", "change": 0, "category": "pulses", "live": False},
-        {"name": "Dhal (Red)", "price": 340, "unit": "LKR/kg", "change": 0, "category": "pulses", "live": False},
-        {"name": "Milk Powder (400g)", "price": 1250, "unit": "LKR/pack", "change": 0, "category": "dairy", "live": False},
-        {"name": "Coconut Oil", "price": 680, "unit": "LKR/L", "change": 0, "category": "cooking", "live": False},
-        {"name": "Coconut (Fresh)", "price": 120, "unit": "LKR/each", "change": 0, "category": "cooking", "live": False},
-        {"name": "Eggs (10)", "price": 480, "unit": "LKR/10", "change": 0, "category": "protein", "live": False},
-        {"name": "Chicken", "price": 1350, "unit": "LKR/kg", "change": 0, "category": "protein", "live": False},
-        {"name": "Big Onion", "price": 280, "unit": "LKR/kg", "change": 0, "category": "vegetables", "live": False},
-        {"name": "Potatoes", "price": 350, "unit": "LKR/kg", "change": 0, "category": "vegetables", "live": False},
-        {"name": "LP Gas (12.5kg)", "price": 4290, "unit": "LKR/cylinder", "change": 0, "category": "fuel", "live": False},
-    ]
+    # WFP Humanitarian Data Exchange - Sri Lanka Food Prices
+    WFP_HDX_URL = "https://data.humdata.org/dataset/0298c598-d312-4771-b564-f4ac4d831f05/resource/3638f0d6-9969-48cf-a919-1d879d037ec6/download/wfp_food_prices_lka.csv"
 
-    live_updates = 0
-    news_sources = [
-        "https://www.dailymirror.lk/",
-        "https://www.dailyft.lk/",
-        "https://www.newsfirst.lk/",
-        "https://www.news.lk/",
-    ]
-
-    for news_url in news_sources:
-        try:
-            resp = _safe_get(news_url, timeout=15)
-            if not resp:
-                continue
-
-            soup = BeautifulSoup(resp.text, "html.parser")
-            page_text = soup.get_text(separator=" ", strip=True).lower()
-
-            # LP Gas price (most commonly announced)
-            gas_patterns = [
-                r"lp\s*gas[:\s]*(?:rs\.?|lkr)?\s*(\d{4})",
-                r"gas\s*(?:cylinder|12\.5\s*kg)[:\s]*(?:rs\.?|lkr)?\s*(\d{4})",
-                r"litro\s*gas[:\s]*(?:rs\.?|lkr)?\s*(\d{4})",
-            ]
-            for pattern in gas_patterns:
-                gas_match = re.search(pattern, page_text)
-                if gas_match:
-                    try:
-                        new_price = int(gas_match.group(1))
-                        if 3000 <= new_price <= 6000:  # Sanity check
-                            for item in commodities:
-                                if "LP Gas" in item["name"]:
-                                    old_price = item["price"]
-                                    item["price"] = new_price
-                                    item["change"] = new_price - old_price
-                                    item["live"] = True
-                                    live_updates += 1
-                                    break
-                            break
-                    except ValueError:
-                        pass
-
-            # Rice prices
-            rice_patterns = [
-                (r"nadu\s*(?:rice)?[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", "White Rice (Nadu)"),
-                (r"samba\s*(?:rice)?[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", "White Rice (Samba)"),
-                (r"red\s*rice[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", "Red Rice"),
-            ]
-            for pattern, name in rice_patterns:
-                match = re.search(pattern, page_text)
-                if match:
-                    try:
-                        new_price = int(match.group(1))
-                        if 150 <= new_price <= 400:  # Sanity check
-                            for item in commodities:
-                                if item["name"] == name:
-                                    old_price = item["price"]
-                                    item["price"] = new_price
-                                    item["change"] = new_price - old_price
-                                    item["live"] = True
-                                    live_updates += 1
-                                    break
-                            break
-                    except ValueError:
-                        pass
-
-            # Sugar price
-            sugar_match = re.search(r"sugar[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", page_text)
-            if sugar_match:
-                try:
-                    new_price = int(sugar_match.group(1))
-                    if 150 <= new_price <= 400:
-                        for item in commodities:
-                            if "Sugar" in item["name"]:
-                                old_price = item["price"]
-                                item["price"] = new_price
-                                item["change"] = new_price - old_price
-                                item["live"] = True
-                                live_updates += 1
-                                break
-                except ValueError:
-                    pass
-
-        except Exception as e:
-            logger.debug(f"[COMMODITY] Error scraping {news_url}: {e}")
-            continue
-
-    # Build result
-    result = {
-        "commodities": commodities,
-        "source": "Live news scraping" if live_updates > 0 else "Baseline data (CAA website unavailable)",
-        "fetched_at": utc_now().isoformat(),
-        "live_updates": live_updates,
-        "summary": {
-            "items_increased": 0,
-            "items_decreased": 0,
-            "items_stable": 0,
-            "items_live": live_updates,
-            "items_baseline": len(commodities) - live_updates,
-        },
+    # Mapping WFP commodity names to our display names
+    COMMODITY_MAPPING = {
+        "Rice (red nadu)": ("White Rice (Nadu)", "grains"),
+        "Rice (white)": ("White Rice (Samba)", "grains"),
+        "Rice (red)": ("Red Rice", "grains"),
+        "Wheat flour": ("Wheat Flour", "grains"),
+        "Sugar": ("Sugar (White)", "essentials"),
+        "Lentils": ("Dhal (Lentils)", "pulses"),
+        "Oil (coconut)": ("Coconut Oil", "cooking"),
+        "Coconut": ("Coconut (Fresh)", "cooking"),
+        "Eggs": ("Eggs (per unit)", "protein"),
+        "Meat (chicken, fresh)": ("Chicken", "protein"),
+        "Meat (chicken, broiler)": ("Chicken (Broiler)", "protein"),
+        "Onions (imported)": ("Big Onion", "vegetables"),
+        "Onions (red)": ("Red Onion", "vegetables"),
+        "Potatoes (imported)": ("Potatoes", "vegetables"),
+        "Potatoes (local)": ("Potatoes (Local)", "vegetables"),
+        "Tomatoes": ("Tomatoes", "vegetables"),
+        "Cabbage": ("Cabbage", "vegetables"),
+        "Carrots": ("Carrots", "vegetables"),
+        "Fuel (diesel)": ("Diesel", "fuel"),
+        "Fuel (petrol-gasoline)": ("Petrol 92 Octane", "fuel"),
     }
 
-    # Calculate summary
-    for item in result["commodities"]:
-        if item["change"] > 0:
-            result["summary"]["items_increased"] += 1
-        elif item["change"] < 0:
-            result["summary"]["items_decreased"] += 1
-        else:
-            result["summary"]["items_stable"] += 1
+    commodities = []
+    data_date = None
+    source_status = "error"
 
-    if live_updates > 0:
-        logger.info(f"[COMMODITY] ✓ Found {live_updates} live price updates from news sources")
-    else:
-        logger.info("[COMMODITY] Using baseline data - no live updates found in news")
+    try:
+        resp = _safe_get(WFP_HDX_URL, timeout=60)
+        if resp and resp.status_code == 200:
+            import csv
+            import io
+            from collections import defaultdict
+
+            reader = csv.DictReader(io.StringIO(resp.text))
+            rows = list(reader)
+
+            if rows:
+                # Get the latest date in the dataset
+                latest_date = max(row.get("date", "") for row in rows if row.get("date"))
+                data_date = latest_date
+
+                # Get the latest prices for each commodity (average across markets)
+                latest_prices: Dict[str, List[float]] = defaultdict(list)
+                for row in rows:
+                    if row.get("date") == latest_date and row.get("price"):
+                        commodity = row.get("commodity", "")
+                        try:
+                            price = float(row["price"])
+                            latest_prices[commodity].append(price)
+                        except (ValueError, KeyError):
+                            pass
+
+                # Calculate average prices and build commodity list
+                for wfp_name, (display_name, category) in COMMODITY_MAPPING.items():
+                    if wfp_name in latest_prices and latest_prices[wfp_name]:
+                        avg_price = sum(latest_prices[wfp_name]) / len(latest_prices[wfp_name])
+                        unit = "LKR/kg"
+                        if "Eggs" in display_name:
+                            unit = "LKR/each"
+                        elif "Coconut (Fresh)" in display_name:
+                            unit = "LKR/each"
+                        elif "Oil" in display_name:
+                            unit = "LKR/L"
+                        elif "Diesel" in display_name or "Petrol" in display_name:
+                            unit = "LKR/L"
+
+                        commodities.append({
+                            "name": display_name,
+                            "price": round(avg_price, 2),
+                            "unit": unit,
+                            "category": category,
+                            "live": True,
+                            "wfp_commodity": wfp_name,
+                            "markets_sampled": len(latest_prices[wfp_name]),
+                        })
+
+                source_status = "live"
+                logger.info(f"[COMMODITY] ✓ Fetched {len(commodities)} live prices from WFP (data date: {latest_date})")
+
+    except Exception as e:
+        logger.warning(f"[COMMODITY] WFP API error: {e}")
+        source_status = "error"
+
+    # Fallback to baseline if no data fetched
+    if not commodities:
+        logger.info("[COMMODITY] Using baseline data - WFP API unavailable")
+        source_status = "baseline"
+        commodities = [
+            {"name": "White Rice (Nadu)", "price": 220, "unit": "LKR/kg", "category": "grains", "live": False},
+            {"name": "White Rice (Samba)", "price": 250, "unit": "LKR/kg", "category": "grains", "live": False},
+            {"name": "Red Rice", "price": 240, "unit": "LKR/kg", "category": "grains", "live": False},
+            {"name": "Sugar (White)", "price": 240, "unit": "LKR/kg", "category": "essentials", "live": False},
+            {"name": "Dhal (Lentils)", "price": 380, "unit": "LKR/kg", "category": "pulses", "live": False},
+            {"name": "Coconut Oil", "price": 680, "unit": "LKR/L", "category": "cooking", "live": False},
+            {"name": "Eggs (per unit)", "price": 48, "unit": "LKR/each", "category": "protein", "live": False},
+            {"name": "Chicken", "price": 1350, "unit": "LKR/kg", "category": "protein", "live": False},
+            {"name": "Big Onion", "price": 280, "unit": "LKR/kg", "category": "vegetables", "live": False},
+            {"name": "Potatoes", "price": 350, "unit": "LKR/kg", "category": "vegetables", "live": False},
+        ]
+        data_date = utc_now().strftime("%Y-%m-%d")
+
+    # Sort by category
+    category_order = {"grains": 1, "essentials": 2, "pulses": 3, "cooking": 4, "protein": 5, "vegetables": 6, "fuel": 7}
+    commodities.sort(key=lambda x: (category_order.get(x.get("category", ""), 99), x.get("name", "")))
+
+    # Build result
+    live_count = sum(1 for c in commodities if c.get("live", False))
+    result = {
+        "commodities": commodities,
+        "source": "UN World Food Programme (WFP) Humanitarian Data Exchange",
+        "source_url": WFP_HDX_URL.replace("/download/wfp_food_prices_lka.csv", ""),
+        "data_date": data_date,
+        "scrape_status": source_status,
+        "fetched_at": utc_now().isoformat(),
+        "summary": {
+            "total_items": len(commodities),
+            "items_live": live_count,
+            "items_baseline": len(commodities) - live_count,
+        },
+    }
 
     # Update cache
     _commodity_cache = result
