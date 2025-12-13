@@ -2,14 +2,15 @@
 
 import { Card } from "../ui/card";
 import { Badge } from "../ui/badge";
-import { ShoppingBasket, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { ShoppingBasket, CheckCircle, AlertCircle } from "lucide-react";
 
 interface Commodity {
     name: string;
     price: number;
     unit: string;
-    change: number;
     category: string;
+    live?: boolean;
+    markets_sampled?: number;
 }
 
 interface CommodityPricesProps {
@@ -19,21 +20,22 @@ interface CommodityPricesProps {
 const CommodityPrices = ({ commodityData }: CommodityPricesProps) => {
     const commodities = (commodityData?.commodities as Commodity[]) || [];
     const summary = (commodityData?.summary as Record<string, number>) || {};
-    const fetchedAt = commodityData?.fetched_at as string;
+    const dataDate = commodityData?.data_date as string;
+    const scrapeStatus = commodityData?.scrape_status as string;
+    const source = commodityData?.source as string;
 
     // Show top 8 essential items
     const essentialItems = commodities.slice(0, 8);
 
-    const getTrendIcon = (change: number) => {
-        if (change > 0) return <TrendingUp className="w-3 h-3 text-destructive" />;
-        if (change < 0) return <TrendingDown className="w-3 h-3 text-success" />;
-        return <Minus className="w-3 h-3 text-muted-foreground" />;
-    };
-
-    const getChangeColor = (change: number) => {
-        if (change > 0) return "text-destructive";
-        if (change < 0) return "text-success";
-        return "text-muted-foreground";
+    // Format date nicely
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return "";
+        try {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString("en-LK", { month: "short", day: "numeric", year: "numeric" });
+        } catch {
+            return dateStr;
+        }
     };
 
     return (
@@ -49,14 +51,20 @@ const CommodityPrices = ({ commodityData }: CommodityPricesProps) => {
                     </div>
                 </div>
                 <div className="flex gap-1">
-                    {summary.items_increased > 0 && (
-                        <Badge className="bg-destructive/20 text-destructive text-xs">
-                            ↑{summary.items_increased}
+                    {scrapeStatus === "live" ? (
+                        <Badge className="bg-success/20 text-success text-xs flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            Live
+                        </Badge>
+                    ) : (
+                        <Badge className="bg-warning/20 text-warning text-xs flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Baseline
                         </Badge>
                     )}
-                    {summary.items_decreased > 0 && (
-                        <Badge className="bg-success/20 text-success text-xs">
-                            ↓{summary.items_decreased}
+                    {summary.total_items > 0 && (
+                        <Badge variant="outline" className="text-xs">
+                            {summary.total_items} items
                         </Badge>
                     )}
                 </div>
@@ -67,27 +75,31 @@ const CommodityPrices = ({ commodityData }: CommodityPricesProps) => {
                     <div key={idx} className="p-2 rounded bg-muted/30 border border-border">
                         <div className="flex items-center justify-between">
                             <span className="text-xs text-muted-foreground truncate flex-1">{item.name}</span>
-                            {getTrendIcon(item.change)}
+                            {item.live && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse"></span>
+                            )}
                         </div>
                         <div className="flex items-baseline gap-1 mt-0.5">
-                            <span className="text-sm font-bold">Rs.{item.price}</span>
-                            {item.change !== 0 && (
-                                <span className={`text-xs ${getChangeColor(item.change)}`}>
-                                    {item.change > 0 ? '+' : ''}{item.change}
-                                </span>
-                            )}
+                            <span className="text-sm font-bold">Rs.{item.price.toFixed(0)}</span>
+                            <span className="text-xs text-muted-foreground">/{item.unit.split("/")[1] || "kg"}</span>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {fetchedAt && (
-                <p className="text-xs text-muted-foreground mt-3 text-center">
-                    Source: Consumer Affairs Authority
+            <div className="mt-3 text-center">
+                <p className="text-xs text-muted-foreground">
+                    {source?.includes("WFP") ? "Source: UN World Food Programme" : source ? `Source: ${source}` : "Source: WFP HDX"}
                 </p>
-            )}
+                {dataDate && (
+                    <p className="text-xs text-muted-foreground/70">
+                        Data: {formatDate(dataDate)}
+                    </p>
+                )}
+            </div>
         </Card>
     );
 };
 
 export default CommodityPrices;
+
