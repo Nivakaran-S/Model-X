@@ -51,7 +51,10 @@ class CombinedAgentGraphBuilder:
         workflow.add_node("EconomicalAgent", economical_builder.build_graph())
         workflow.add_node("PoliticalAgent", political_builder.build_graph())
         workflow.add_node("MeteorologicalAgent", meteorological_builder.build_graph())
-        workflow.add_node("DataRetrievalAgent", data_retrieval_builder.build_data_retrieval_agent_graph())
+        workflow.add_node(
+            "DataRetrievalAgent",
+            data_retrieval_builder.build_data_retrieval_agent_graph(),
+        )
 
         workflow.add_edge(START, "GraphInitiator")
 

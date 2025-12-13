@@ -28,6 +28,7 @@ def utc_now() -> datetime:
     """Return current UTC time (Python 3.12+ compatible)."""
     return datetime.now(timezone.utc)
 
+
 # Optional Playwright import
 try:
     from playwright.sync_api import (
@@ -1021,26 +1022,26 @@ SA_CACHE_DURATION_MINUTES = 15  # 15 minute cache for all SA tools
 def tool_ceb_power_status() -> Dict[str, Any]:
     """
     Get CEB power outage / load shedding schedule for Sri Lanka.
-    
-    ENHANCED: 
+
+    ENHANCED:
     - Scrapes ceb.lk for official schedules and PDF press releases
     - Extracts text from Dropbox-hosted PDF announcements
     - Falls back to news sites for power-related updates
-    
+
     Returns:
         Dict with schedules by area, current status, and timestamp
     """
     global _ceb_cache, _ceb_cache_time
-    
+
     # Check cache
     if _ceb_cache_time:
         cache_age = (utc_now() - _ceb_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _ceb_cache:
             logger.info(f"[CEB] Using cached data ({cache_age:.1f} min old)")
             return _ceb_cache
-    
+
     logger.info("[CEB] Fetching power outage status...")
-    
+
     result = {
         "status": "operational",
         "load_shedding_active": False,
@@ -1051,37 +1052,46 @@ def tool_ceb_power_status() -> Dict[str, Any]:
         "fetched_at": utc_now().isoformat(),
         "scrape_status": "baseline",
     }
-    
+
     pdf_links_found = []
-    
+
     try:
         # Try to scrape CEB website
         resp = _safe_get("https://ceb.lk/", timeout=30)
         if resp:
             soup = BeautifulSoup(resp.text, "html.parser")
             page_text = soup.get_text(separator="\n", strip=True).lower()
-            
+
             # Check for load shedding keywords
-            if any(kw in page_text for kw in ["load shedding", "power cut", "outage schedule"]):
+            if any(
+                kw in page_text
+                for kw in ["load shedding", "power cut", "outage schedule"]
+            ):
                 result["load_shedding_active"] = True
                 result["status"] = "load_shedding"
-            
+
             # Extract any announcements
-            for tag in soup.find_all(["marquee", "div", "p"], class_=lambda x: x and "announce" in str(x).lower()):
+            for tag in soup.find_all(
+                ["marquee", "div", "p"],
+                class_=lambda x: x and "announce" in str(x).lower(),
+            ):
                 text = tag.get_text(strip=True)
                 if text and len(text) > 20:
                     result["announcements"].append(text[:200])
-            
+
             # ENHANCED: Find PDF links (Dropbox, direct PDFs, press releases)
             for link in soup.find_all("a", href=True):
                 href = link.get("href", "")
                 link_text = link.get_text(strip=True).lower()
-                
+
                 # Check for Dropbox links or PDF links
                 is_dropbox = "dropbox.com" in href
                 is_pdf = href.lower().endswith(".pdf")
-                is_press_release = any(kw in link_text for kw in ["press release", "announcement", "notice", "schedule"])
-                
+                is_press_release = any(
+                    kw in link_text
+                    for kw in ["press release", "announcement", "notice", "schedule"]
+                )
+
                 if is_dropbox or is_pdf or is_press_release:
                     # Convert Dropbox links for direct download
                     if is_dropbox:
@@ -1090,102 +1100,134 @@ def tool_ceb_power_status() -> Dict[str, Any]:
                             href = href.replace("dl=0", "dl=1")
                         elif "?dl=" not in href and "&dl=" not in href:
                             href = href + ("&" if "?" in href else "?") + "dl=1"
-                    
-                    pdf_links_found.append({
-                        "url": href,
-                        "title": link_text or "Press Release",
-                        "is_dropbox": is_dropbox,
-                    })
-            
+
+                    pdf_links_found.append(
+                        {
+                            "url": href,
+                            "title": link_text or "Press Release",
+                            "is_dropbox": is_dropbox,
+                        }
+                    )
+
             # Limit to latest 3 PDFs to avoid too many downloads
             pdf_links_found = pdf_links_found[:3]
-            
+
             # Extract text from PDF links
             for pdf_info in pdf_links_found:
                 try:
                     logger.info(f"[CEB] Extracting PDF: {pdf_info['title'][:50]}...")
                     pdf_text = _extract_text_from_pdf_url(pdf_info["url"])
-                    
-                    if pdf_text and not pdf_text.startswith("["):  # Not an error message
+
+                    if pdf_text and not pdf_text.startswith(
+                        "["
+                    ):  # Not an error message
                         # Check for load shedding in PDF content
                         pdf_lower = pdf_text.lower()
-                        if any(kw in pdf_lower for kw in ["load shedding", "power cut", "outage", "interruption"]):
+                        if any(
+                            kw in pdf_lower
+                            for kw in [
+                                "load shedding",
+                                "power cut",
+                                "outage",
+                                "interruption",
+                            ]
+                        ):
                             result["load_shedding_active"] = True
                             result["status"] = "load_shedding"
-                        
-                        result["press_releases"].append({
-                            "title": pdf_info["title"],
-                            "content": pdf_text[:1000] + ("..." if len(pdf_text) > 1000 else ""),
-                            "source": "dropbox" if pdf_info["is_dropbox"] else "ceb.lk",
-                        })
+
+                        result["press_releases"].append(
+                            {
+                                "title": pdf_info["title"],
+                                "content": pdf_text[:1000]
+                                + ("..." if len(pdf_text) > 1000 else ""),
+                                "source": (
+                                    "dropbox" if pdf_info["is_dropbox"] else "ceb.lk"
+                                ),
+                            }
+                        )
                         result["scrape_status"] = "live"
                 except Exception as pdf_error:
                     logger.warning(f"[CEB] PDF extraction error: {pdf_error}")
-            
-            logger.info(f"[CEB] Scraped - PDFs found: {len(pdf_links_found)}, Active: {result['load_shedding_active']}")
-        
+
+            logger.info(
+                f"[CEB] Scraped - PDFs found: {len(pdf_links_found)}, Active: {result['load_shedding_active']}"
+            )
+
         # Also check news sites for power-related updates
         news_sources = [
             "https://www.news.lk/",
             "https://www.dailymirror.lk/",
         ]
-        
+
         for news_url in news_sources:
             try:
                 news_resp = _safe_get(news_url, timeout=20)
                 if news_resp:
                     news_soup = BeautifulSoup(news_resp.text, "html.parser")
                     news_text = news_soup.get_text(separator=" ", strip=True).lower()
-                    
+
                     # Check for power-related news
-                    if any(kw in news_text for kw in ["power cut", "load shedding", "ceb", "electricity"]):
+                    if any(
+                        kw in news_text
+                        for kw in ["power cut", "load shedding", "ceb", "electricity"]
+                    ):
                         # Look for headlines mentioning power
                         for headline in news_soup.find_all(["h1", "h2", "h3", "h4"]):
                             h_text = headline.get_text(strip=True)
-                            if any(kw in h_text.lower() for kw in ["power", "ceb", "electricity", "load shedding"]):
+                            if any(
+                                kw in h_text.lower()
+                                for kw in [
+                                    "power",
+                                    "ceb",
+                                    "electricity",
+                                    "load shedding",
+                                ]
+                            ):
                                 if h_text not in result["announcements"]:
-                                    result["announcements"].append(f"[News] {h_text[:150]}")
+                                    result["announcements"].append(
+                                        f"[News] {h_text[:150]}"
+                                    )
                                     break
             except Exception as news_error:
                 logger.debug(f"[CEB] News scraping error for {news_url}: {news_error}")
-        
+
         # If no press releases or announcements found, provide baseline message
         if not result["press_releases"] and not result["announcements"]:
             result["status"] = "no_load_shedding"
             result["announcements"].append("CEB: Normal power supply across the island")
-            
+
     except Exception as e:
         logger.warning(f"[CEB] Scraping error: {e}")
         result["status"] = "unknown"
         result["error"] = str(e)
-    
+
     # Update cache
     _ceb_cache = result
     _ceb_cache_time = utc_now()
-    
+
     return result
 
 
 def tool_fuel_prices() -> Dict[str, Any]:
     """
     Get current fuel prices in Sri Lanka.
-    
+
     Scrapes official CEYPETCO/LIOC announcements or news sources.
-    
+
     Returns:
         Dict with prices for petrol, diesel, kerosene, and last update
     """
     global _fuel_cache, _fuel_cache_time
-    
+
     # Check cache
     if _fuel_cache_time:
         cache_age = (utc_now() - _fuel_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _fuel_cache:
             logger.info(f"[FUEL] Using cached data ({cache_age:.1f} min old)")
             return _fuel_cache
-    
+
     logger.info("[FUEL] Fetching fuel prices...")
-    
+
     # December 2025 CEYPETCO prices (confirmed unchanged from November 2025)
     # Source: CEYPETCO official announcement
     result = {
@@ -1201,7 +1243,7 @@ def tool_fuel_prices() -> Dict[str, Any]:
         "fetched_at": utc_now().isoformat(),
         "note": "Prices confirmed unchanged for December 2025",
     }
-    
+
     try:
         # Try to scrape news for latest fuel price announcements
         news_sources = [
@@ -1209,69 +1251,81 @@ def tool_fuel_prices() -> Dict[str, Any]:
             "https://www.dailymirror.lk/",
             "https://www.newsfirst.lk/",
         ]
-        
+
         for source_url in news_sources:
             resp = _safe_get(source_url, timeout=20)
             if resp:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 page_text = soup.get_text(separator=" ", strip=True).lower()
-                
+
                 # Look for fuel price mentions
                 if "fuel" in page_text and ("price" in page_text or "lkr" in page_text):
                     # Extract prices using regex
-                    petrol_match = re.search(r"petrol\s*(?:92|95)?\s*(?:octane)?\s*[:\-]?\s*(?:rs\.?|lkr)?\s*(\d{2,3}(?:\.\d{2})?)", page_text)
-                    diesel_match = re.search(r"diesel\s*[:\-]?\s*(?:rs\.?|lkr)?\s*(\d{2,3}(?:\.\d{2})?)", page_text)
-                    
+                    petrol_match = re.search(
+                        r"petrol\s*(?:92|95)?\s*(?:octane)?\s*[:\-]?\s*(?:rs\.?|lkr)?\s*(\d{2,3}(?:\.\d{2})?)",
+                        page_text,
+                    )
+                    diesel_match = re.search(
+                        r"diesel\s*[:\-]?\s*(?:rs\.?|lkr)?\s*(\d{2,3}(?:\.\d{2})?)",
+                        page_text,
+                    )
+
                     if petrol_match:
                         try:
-                            result["prices"]["petrol_92"]["price"] = float(petrol_match.group(1))
+                            result["prices"]["petrol_92"]["price"] = float(
+                                petrol_match.group(1)
+                            )
                             result["source"] = "news_scrape"
                         except ValueError:
                             pass
                     if diesel_match:
                         try:
-                            result["prices"]["auto_diesel"]["price"] = float(diesel_match.group(1))
+                            result["prices"]["auto_diesel"]["price"] = float(
+                                diesel_match.group(1)
+                            )
                         except ValueError:
                             pass
                     break
-                    
-        logger.info(f"[FUEL] Fetched prices - Petrol 92: {result['prices']['petrol_92']['price']}")
-        
+
+        logger.info(
+            f"[FUEL] Fetched prices - Petrol 92: {result['prices']['petrol_92']['price']}"
+        )
+
     except Exception as e:
         logger.warning(f"[FUEL] Scraping error: {e}")
         result["error"] = str(e)
-    
+
     # Update cache
     _fuel_cache = result
     _fuel_cache_time = utc_now()
-    
+
     return result
 
 
 def tool_cbsl_indicators() -> Dict[str, Any]:
     """
     Get key economic indicators from Central Bank of Sri Lanka.
-    
+
     Scrapes live data from cbsl.gov.lk including:
     - Exchange rates (USD/LKR TT Buy/Sell)
     - CCPI Inflation
     - Overnight Policy Rate
     - Forex reserves
-    
+
     Returns:
         Dict with economic indicators and trend data
     """
     global _cbsl_cache, _cbsl_cache_time
-    
+
     # Check cache
     if _cbsl_cache_time:
         cache_age = (utc_now() - _cbsl_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _cbsl_cache:
             logger.info(f"[CBSL] Using cached data ({cache_age:.1f} min old)")
             return _cbsl_cache
-    
+
     logger.info("[CBSL] Fetching economic indicators from cbsl.gov.lk...")
-    
+
     # Baseline economic data (December 2025 - latest known values)
     result = {
         "indicators": {
@@ -1308,40 +1362,50 @@ def tool_cbsl_indicators() -> Dict[str, Any]:
         "data_as_of": "2025-12",
         "scrape_status": "baseline",
     }
-    
+
     try:
         # Try to scrape CBSL for updated rates
         resp = _safe_get("https://www.cbsl.gov.lk/", timeout=30)
         if resp:
             soup = BeautifulSoup(resp.text, "html.parser")
             page_text = soup.get_text(separator=" ", strip=True)
-            
+
             scraped_any = False
-            
+
             # Extract TT Buy exchange rate (format: "TT Buy 305.3238" or "TT Buy: 305.3238")
-            tt_buy_match = re.search(r"TT\s*Buy[:\s]*(\d{2,3}(?:\.\d{2,4})?)", page_text, re.I)
+            tt_buy_match = re.search(
+                r"TT\s*Buy[:\s]*(\d{2,3}(?:\.\d{2,4})?)", page_text, re.I
+            )
             if tt_buy_match:
                 try:
-                    result["indicators"]["exchange_rate"]["usd_lkr_buy"] = round(float(tt_buy_match.group(1)), 2)
+                    result["indicators"]["exchange_rate"]["usd_lkr_buy"] = round(
+                        float(tt_buy_match.group(1)), 2
+                    )
                     scraped_any = True
                 except ValueError:
                     pass
-            
+
             # Extract TT Sell exchange rate
-            tt_sell_match = re.search(r"TT\s*Sell[:\s]*(\d{2,3}(?:\.\d{2,4})?)", page_text, re.I)
+            tt_sell_match = re.search(
+                r"TT\s*Sell[:\s]*(\d{2,3}(?:\.\d{2,4})?)", page_text, re.I
+            )
             if tt_sell_match:
                 try:
-                    result["indicators"]["exchange_rate"]["usd_lkr_sell"] = round(float(tt_sell_match.group(1)), 2)
+                    result["indicators"]["exchange_rate"]["usd_lkr_sell"] = round(
+                        float(tt_sell_match.group(1)), 2
+                    )
                     scraped_any = True
                 except ValueError:
                     pass
-            
+
             # Calculate mid rate if we have both buy and sell
             if tt_buy_match and tt_sell_match:
                 buy = result["indicators"]["exchange_rate"]["usd_lkr_buy"]
                 sell = result["indicators"]["exchange_rate"]["usd_lkr_sell"]
-                result["indicators"]["exchange_rate"]["usd_lkr"] = round((buy + sell) / 2, 2)
-            
+                result["indicators"]["exchange_rate"]["usd_lkr"] = round(
+                    (buy + sell) / 2, 2
+                )
+
             # Extract CCPI Inflation (format: "CCPI Inflation 2.10%" or just "Inflation 2.10 %")
             inflation_patterns = [
                 r"CCPI\s*Inflation[:\s]*(\d{1,2}(?:\.\d{1,2})?)\s*%",
@@ -1352,12 +1416,14 @@ def tool_cbsl_indicators() -> Dict[str, Any]:
                 inflation_match = re.search(pattern, page_text, re.I)
                 if inflation_match:
                     try:
-                        result["indicators"]["inflation"]["ccpi_yoy"] = float(inflation_match.group(1))
+                        result["indicators"]["inflation"]["ccpi_yoy"] = float(
+                            inflation_match.group(1)
+                        )
                         scraped_any = True
                         break
                     except ValueError:
                         pass
-            
+
             # Extract Overnight Policy Rate (format: "Overnight Policy Rate 7.75%" or "Policy Rate 7.75 %")
             policy_patterns = [
                 r"Overnight\s*Policy\s*Rate[:\s]*(\d{1,2}(?:\.\d{1,2})?)\s*%",
@@ -1368,12 +1434,14 @@ def tool_cbsl_indicators() -> Dict[str, Any]:
                 policy_match = re.search(pattern, page_text, re.I)
                 if policy_match:
                     try:
-                        result["indicators"]["policy_rates"]["overnight_rate"] = float(policy_match.group(1))
+                        result["indicators"]["policy_rates"]["overnight_rate"] = float(
+                            policy_match.group(1)
+                        )
                         scraped_any = True
                         break
                     except ValueError:
                         pass
-            
+
             if scraped_any:
                 result["scrape_status"] = "live"
                 result["data_as_of"] = utc_now().strftime("%Y-%m")
@@ -1387,38 +1455,38 @@ def tool_cbsl_indicators() -> Dict[str, Any]:
                 logger.info("[CBSL] Using baseline data - no live values matched")
         else:
             logger.warning("[CBSL] Could not reach cbsl.gov.lk, using baseline data")
-        
+
     except Exception as e:
         logger.warning(f"[CBSL] Scraping error: {e}")
         result["error"] = str(e)
-    
+
     # Update cache
     _cbsl_cache = result
     _cbsl_cache_time = utc_now()
-    
+
     return result
 
 
 def tool_health_alerts() -> Dict[str, Any]:
     """
     Get health alerts and disease outbreak information for Sri Lanka.
-    
+
     Includes dengue case counts, epidemic alerts, and health advisories.
-    
+
     Returns:
         Dict with health alerts, disease data, and notifications
     """
     global _health_cache, _health_cache_time
-    
+
     # Check cache
     if _health_cache_time:
         cache_age = (utc_now() - _health_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _health_cache:
             logger.info(f"[HEALTH] Using cached data ({cache_age:.1f} min old)")
             return _health_cache
-    
+
     logger.info("[HEALTH] Fetching health alerts...")
-    
+
     # Baseline health data
     result = {
         "alerts": [],
@@ -1433,29 +1501,39 @@ def tool_health_alerts() -> Dict[str, Any]:
         "source": "health.gov.lk",
         "fetched_at": utc_now().isoformat(),
     }
-    
+
     try:
         # Try to scrape Health Ministry
         resp = _safe_get("https://www.health.gov.lk/", timeout=30)
         if resp:
             soup = BeautifulSoup(resp.text, "html.parser")
             page_text = soup.get_text(separator="\n", strip=True).lower()
-            
+
             # Check for outbreak keywords
-            outbreak_keywords = ["outbreak", "epidemic", "alert", "warning", "emergency"]
+            outbreak_keywords = [
+                "outbreak",
+                "epidemic",
+                "alert",
+                "warning",
+                "emergency",
+            ]
             for kw in outbreak_keywords:
                 if kw in page_text:
                     # Try to extract the context
                     idx = page_text.find(kw)
-                    context = page_text[max(0, idx-50):idx+100]
+                    context = page_text[max(0, idx - 50) : idx + 100]
                     if len(context) > 20:
-                        result["alerts"].append({
-                            "type": "health_notice",
-                            "text": context.strip()[:150],
-                            "severity": "medium" if kw in ["alert", "warning"] else "low",
-                        })
+                        result["alerts"].append(
+                            {
+                                "type": "health_notice",
+                                "text": context.strip()[:150],
+                                "severity": (
+                                    "medium" if kw in ["alert", "warning"] else "low"
+                                ),
+                            }
+                        )
                         break
-            
+
             # Check for dengue data
             dengue_match = re.search(r"dengue[:\s]*(\d{1,5})\s*(?:cases?)?", page_text)
             if dengue_match:
@@ -1463,67 +1541,161 @@ def tool_health_alerts() -> Dict[str, Any]:
                     result["dengue"]["weekly_cases"] = int(dengue_match.group(1))
                 except ValueError:
                     pass
-            
-            logger.info(f"[HEALTH] Fetched - Dengue cases: {result['dengue']['weekly_cases']}")
-        
+
+            logger.info(
+                f"[HEALTH] Fetched - Dengue cases: {result['dengue']['weekly_cases']}"
+            )
+
         # Add seasonal health advisory
         current_month = utc_now().month
         if current_month in [5, 6, 10, 11]:  # Monsoon = mosquito season
-            result["advisories"].append({
-                "type": "seasonal",
-                "text": "Monsoon season: Increased dengue risk. Remove stagnant water around homes.",
-                "severity": "medium",
-            })
-        
+            result["advisories"].append(
+                {
+                    "type": "seasonal",
+                    "text": "Monsoon season: Increased dengue risk. Remove stagnant water around homes.",
+                    "severity": "medium",
+                }
+            )
+
     except Exception as e:
         logger.warning(f"[HEALTH] Scraping error: {e}")
         result["error"] = str(e)
-    
+
     # Update cache
     _health_cache = result
     _health_cache_time = utc_now()
-    
+
     return result
 
 
 def tool_commodity_prices() -> Dict[str, Any]:
     """
     Get prices for essential commodities in Sri Lanka.
-    
+
     Includes rice, sugar, dhal, milk powder, and other staples.
-    
+
     Returns:
         Dict with commodity prices, units, and recent changes
     """
     global _commodity_cache, _commodity_cache_time
-    
+
     # Check cache
     if _commodity_cache_time:
         cache_age = (utc_now() - _commodity_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _commodity_cache:
             logger.info(f"[COMMODITY] Using cached data ({cache_age:.1f} min old)")
             return _commodity_cache
-    
+
     logger.info("[COMMODITY] Fetching commodity prices...")
-    
+
     # Current approximate commodity prices (LKR)
     result = {
         "commodities": [
-            {"name": "White Rice (Nadu)", "price": 220, "unit": "LKR/kg", "change": 0, "category": "grains"},
-            {"name": "White Rice (Samba)", "price": 250, "unit": "LKR/kg", "change": 0, "category": "grains"},
-            {"name": "Red Rice", "price": 240, "unit": "LKR/kg", "change": 0, "category": "grains"},
-            {"name": "Wheat Flour", "price": 195, "unit": "LKR/kg", "change": -5, "category": "grains"},
-            {"name": "Sugar (White)", "price": 240, "unit": "LKR/kg", "change": 0, "category": "essentials"},
-            {"name": "Dhal (Mysore)", "price": 510, "unit": "LKR/kg", "change": 10, "category": "pulses"},
-            {"name": "Dhal (Red)", "price": 340, "unit": "LKR/kg", "change": 0, "category": "pulses"},
-            {"name": "Milk Powder (400g)", "price": 1250, "unit": "LKR/pack", "change": 0, "category": "dairy"},
-            {"name": "Coconut Oil", "price": 680, "unit": "LKR/L", "change": -20, "category": "cooking"},
-            {"name": "Coconut (Fresh)", "price": 120, "unit": "LKR/each", "change": 10, "category": "cooking"},
-            {"name": "Eggs (10)", "price": 480, "unit": "LKR/10", "change": 0, "category": "protein"},
-            {"name": "Chicken", "price": 1350, "unit": "LKR/kg", "change": 50, "category": "protein"},
-            {"name": "Big Onion", "price": 280, "unit": "LKR/kg", "change": -10, "category": "vegetables"},
-            {"name": "Potatoes", "price": 350, "unit": "LKR/kg", "change": 20, "category": "vegetables"},
-            {"name": "LP Gas (12.5kg)", "price": 4290, "unit": "LKR/cylinder", "change": 0, "category": "fuel"},
+            {
+                "name": "White Rice (Nadu)",
+                "price": 220,
+                "unit": "LKR/kg",
+                "change": 0,
+                "category": "grains",
+            },
+            {
+                "name": "White Rice (Samba)",
+                "price": 250,
+                "unit": "LKR/kg",
+                "change": 0,
+                "category": "grains",
+            },
+            {
+                "name": "Red Rice",
+                "price": 240,
+                "unit": "LKR/kg",
+                "change": 0,
+                "category": "grains",
+            },
+            {
+                "name": "Wheat Flour",
+                "price": 195,
+                "unit": "LKR/kg",
+                "change": -5,
+                "category": "grains",
+            },
+            {
+                "name": "Sugar (White)",
+                "price": 240,
+                "unit": "LKR/kg",
+                "change": 0,
+                "category": "essentials",
+            },
+            {
+                "name": "Dhal (Mysore)",
+                "price": 510,
+                "unit": "LKR/kg",
+                "change": 10,
+                "category": "pulses",
+            },
+            {
+                "name": "Dhal (Red)",
+                "price": 340,
+                "unit": "LKR/kg",
+                "change": 0,
+                "category": "pulses",
+            },
+            {
+                "name": "Milk Powder (400g)",
+                "price": 1250,
+                "unit": "LKR/pack",
+                "change": 0,
+                "category": "dairy",
+            },
+            {
+                "name": "Coconut Oil",
+                "price": 680,
+                "unit": "LKR/L",
+                "change": -20,
+                "category": "cooking",
+            },
+            {
+                "name": "Coconut (Fresh)",
+                "price": 120,
+                "unit": "LKR/each",
+                "change": 10,
+                "category": "cooking",
+            },
+            {
+                "name": "Eggs (10)",
+                "price": 480,
+                "unit": "LKR/10",
+                "change": 0,
+                "category": "protein",
+            },
+            {
+                "name": "Chicken",
+                "price": 1350,
+                "unit": "LKR/kg",
+                "change": 50,
+                "category": "protein",
+            },
+            {
+                "name": "Big Onion",
+                "price": 280,
+                "unit": "LKR/kg",
+                "change": -10,
+                "category": "vegetables",
+            },
+            {
+                "name": "Potatoes",
+                "price": 350,
+                "unit": "LKR/kg",
+                "change": 20,
+                "category": "vegetables",
+            },
+            {
+                "name": "LP Gas (12.5kg)",
+                "price": 4290,
+                "unit": "LKR/cylinder",
+                "change": 0,
+                "category": "fuel",
+            },
         ],
         "source": "Consumer Affairs Authority / Market Survey",
         "fetched_at": utc_now().isoformat(),
@@ -1533,7 +1705,7 @@ def tool_commodity_prices() -> Dict[str, Any]:
             "items_stable": 0,
         },
     }
-    
+
     # Calculate summary
     for item in result["commodities"]:
         if item["change"] > 0:
@@ -1542,14 +1714,14 @@ def tool_commodity_prices() -> Dict[str, Any]:
             result["summary"]["items_decreased"] += 1
         else:
             result["summary"]["items_stable"] += 1
-    
+
     try:
         # Try to scrape news for price updates
         resp = _safe_get("https://www.dailymirror.lk/", timeout=20)
         if resp:
             soup = BeautifulSoup(resp.text, "html.parser")
             page_text = soup.get_text(separator=" ", strip=True).lower()
-            
+
             # Check for LP Gas price updates (commonly announced)
             gas_match = re.search(r"lp\s*gas[:\s]*(?:rs\.?|lkr)?\s*(\d{4})", page_text)
             if gas_match:
@@ -1563,40 +1735,40 @@ def tool_commodity_prices() -> Dict[str, Any]:
                             break
                 except ValueError:
                     pass
-            
+
             logger.info("[COMMODITY] Successfully fetched commodity prices")
-        
+
     except Exception as e:
         logger.warning(f"[COMMODITY] Scraping error: {e}")
         result["error"] = str(e)
-    
+
     # Update cache
     _commodity_cache = result
     _commodity_cache_time = utc_now()
-    
+
     return result
 
 
 def tool_water_supply_alerts() -> Dict[str, Any]:
     """
     Get water supply disruption alerts from NWSDB.
-    
+
     Returns information about planned/unplanned water cuts and affected areas.
-    
+
     Returns:
         Dict with active disruptions, affected areas, and restoration times
     """
     global _water_cache, _water_cache_time
-    
+
     # Check cache
     if _water_cache_time:
         cache_age = (utc_now() - _water_cache_time).total_seconds() / 60
         if cache_age < SA_CACHE_DURATION_MINUTES and _water_cache:
             logger.info(f"[WATER] Using cached data ({cache_age:.1f} min old)")
             return _water_cache
-    
+
     logger.info("[WATER] Fetching water supply alerts...")
-    
+
     result = {
         "status": "normal",
         "active_disruptions": [],
@@ -1605,22 +1777,28 @@ def tool_water_supply_alerts() -> Dict[str, Any]:
         "fetched_at": utc_now().isoformat(),
         "overall_supply": "stable",
     }
-    
+
     try:
         # Try to scrape NWSDB website
         resp = _safe_get("https://www.waterboard.lk/", timeout=30)
         if resp:
             soup = BeautifulSoup(resp.text, "html.parser")
             page_text = soup.get_text(separator="\n", strip=True).lower()
-            
+
             # Check for disruption keywords
-            disruption_keywords = ["disruption", "interruption", "cut off", "maintenance", "repair"]
+            disruption_keywords = [
+                "disruption",
+                "interruption",
+                "cut off",
+                "maintenance",
+                "repair",
+            ]
             for kw in disruption_keywords:
                 if kw in page_text:
                     result["status"] = "disruptions_reported"
                     idx = page_text.find(kw)
-                    context = page_text[max(0, idx-30):idx+120]
-                    
+                    context = page_text[max(0, idx - 30) : idx + 120]
+
                     # Try to extract area name
                     area_patterns = [
                         r"(colombo|gampaha|kandy|galle|matara|jaffna|kurunegala|ratnapura)",
@@ -1632,31 +1810,35 @@ def tool_water_supply_alerts() -> Dict[str, Any]:
                         if match:
                             area = match.group(1).title()
                             break
-                    
-                    result["active_disruptions"].append({
-                        "area": area,
-                        "type": kw,
-                        "details": context.strip()[:150],
-                        "severity": "medium",
-                    })
+
+                    result["active_disruptions"].append(
+                        {
+                            "area": area,
+                            "type": kw,
+                            "details": context.strip()[:150],
+                            "severity": "medium",
+                        }
+                    )
                     break
-            
-            logger.info(f"[WATER] Fetched - Disruptions: {len(result['active_disruptions'])}")
-        
+
+            logger.info(
+                f"[WATER] Fetched - Disruptions: {len(result['active_disruptions'])}"
+            )
+
         # If no disruptions found via scraping, report normal
         if not result["active_disruptions"]:
             result["status"] = "normal"
             result["overall_supply"] = "Normal water supply across most areas"
-        
+
     except Exception as e:
         logger.warning(f"[WATER] Scraping error: {e}")
         result["error"] = str(e)
         result["status"] = "unknown"
-    
+
     # Update cache
     _water_cache = result
     _water_cache_time = utc_now()
-    
+
     return result
 
 
@@ -4389,9 +4571,11 @@ def scrape_reddit(
     data = scrape_reddit_impl(keywords=keywords, limit=limit, subreddit=subreddit)
     return json.dumps(data, default=str)
 
+
 # ============================================
 # SITUATIONAL AWARENESS TOOLS (DASHBOARD APIs)
 # ============================================
+
 
 def tool_health_alerts() -> dict:
     """Get health alerts from health.gov.lk - structured for dashboard."""
@@ -4401,14 +4585,16 @@ def tool_health_alerts() -> dict:
             "dengue": {
                 "weekly_cases": 1890,
                 "high_risk_districts": ["Colombo", "Gampaha", "Kalutara"],
-                "trend": "stable"
+                "trend": "stable",
             },
-            "advisories": [{
-                "type": "seasonal",
-                "text": "Monsoon season: Take precautions against dengue",
-                "severity": "medium"
-            }],
-            "fetched_at": utc_now().isoformat()
+            "advisories": [
+                {
+                    "type": "seasonal",
+                    "text": "Monsoon season: Take precautions against dengue",
+                    "severity": "medium",
+                }
+            ],
+            "fetched_at": utc_now().isoformat(),
         }
     except Exception as e:
         return {"alerts": [], "dengue": {}, "advisories": [], "error": str(e)}
@@ -4421,7 +4607,7 @@ def tool_water_supply_alerts() -> dict:
             "status": "normal",
             "active_disruptions": [],
             "overall_supply": "Normal water supply across most areas",
-            "fetched_at": utc_now().isoformat()
+            "fetched_at": utc_now().isoformat(),
         }
     except Exception as e:
         return {"status": "unknown", "active_disruptions": [], "error": str(e)}
@@ -4434,7 +4620,7 @@ def tool_ceb_power_status() -> dict:
         "current_schedule": None,
         "announcements": [],
         "generation_capacity": "Normal",
-        "fetched_at": utc_now().isoformat()
+        "fetched_at": utc_now().isoformat(),
     }
 
 
@@ -4446,11 +4632,11 @@ def tool_fuel_prices() -> dict:
             "petrol_95": {"price": 335, "unit": "LKR/L"},
             "diesel": {"price": 277, "unit": "LKR/L"},
             "super_diesel": {"price": 318, "unit": "LKR/L"},
-            "kerosene": {"price": 185, "unit": "LKR/L"}
+            "kerosene": {"price": 185, "unit": "LKR/L"},
         },
         "last_updated": "2025-12-01",
         "source": "CEYPETCO",
-        "fetched_at": utc_now().isoformat()
+        "fetched_at": utc_now().isoformat(),
     }
 
 
@@ -4460,7 +4646,7 @@ def tool_cbsl_rates() -> dict:
         "inflation": {"headline": 0.7, "core": 1.2, "unit": "%"},
         "policy_rates": {"sdfr": 8.25, "slfr": 9.25, "unit": "%"},
         "exchange_rate": {"usd": 296.50, "eur": 312.80, "unit": "LKR"},
-        "fetched_at": utc_now().isoformat()
+        "fetched_at": utc_now().isoformat(),
     }
 
 
@@ -4475,13 +4661,13 @@ def tool_cbsl_indicators() -> dict:
             "inflation": {
                 "ccpi_yoy": 2.1,  # CCPI Year-on-Year (Nov 2025 actual)
                 "core_yoy": 1.8,
-                "trend": "stable"
+                "trend": "stable",
             },
             "policy_rates": {
                 "overnight_rate": 7.75,  # Overnight Policy Rate (Dec 2025)
                 "sdfr": 7.25,  # Standing Deposit Facility Rate
                 "slfr": 8.25,  # Standing Lending Facility Rate
-                "last_changed": "2024-12"
+                "last_changed": "2024-12",
             },
             "exchange_rate": {
                 "usd_lkr": 309.17,  # Dec 11, 2025 rate
@@ -4489,16 +4675,16 @@ def tool_cbsl_indicators() -> dict:
                 "usd_lkr_sell": 313.00,
                 "eur_lkr": 325.50,
                 "gbp_lkr": 390.25,
-                "trend": "stable"
+                "trend": "stable",
             },
             "forex_reserves": {
                 "value": 6.5,  # Billion USD (Dec 2025)
-                "trend": "improving"
-            }
+                "trend": "improving",
+            },
         },
         "source": "Central Bank of Sri Lanka",
         "scrape_status": "baseline",
-        "fetched_at": utc_now().isoformat()
+        "fetched_at": utc_now().isoformat(),
     }
 
 
@@ -4510,9 +4696,9 @@ def tool_commodity_prices() -> dict:
             {"name": "Rice (Samba)", "price": 250, "unit": "LKR/kg"},
             {"name": "Dhal (Red)", "price": 360, "unit": "LKR/kg"},
             {"name": "Sugar", "price": 215, "unit": "LKR/kg"},
-            {"name": "Coconut", "price": 120, "unit": "LKR/nut"}
+            {"name": "Coconut", "price": 120, "unit": "LKR/nut"},
         ],
-        "fetched_at": utc_now().isoformat()
+        "fetched_at": utc_now().isoformat(),
     }
 
 

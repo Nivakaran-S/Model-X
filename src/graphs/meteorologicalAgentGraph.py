@@ -13,7 +13,9 @@ class MeteorologicalGraphBuilder:
     def __init__(self, llm):
         self.llm = llm
 
-    def build_official_sources_subgraph(self, node: MeteorologicalAgentNode) -> StateGraph:
+    def build_official_sources_subgraph(
+        self, node: MeteorologicalAgentNode
+    ) -> StateGraph:
         subgraph = StateGraph(MeteorologicalAgentState)
         subgraph.add_node("collect_official", node.collect_official_sources)
         subgraph.set_entry_point("collect_official")
@@ -37,7 +39,9 @@ class MeteorologicalGraphBuilder:
 
         return subgraph.compile()
 
-    def build_feed_generation_subgraph(self, node: MeteorologicalAgentNode) -> StateGraph:
+    def build_feed_generation_subgraph(
+        self, node: MeteorologicalAgentNode
+    ) -> StateGraph:
         subgraph = StateGraph(MeteorologicalAgentState)
 
         subgraph.add_node("categorize", node.categorize_by_geography)
@@ -60,9 +64,15 @@ class MeteorologicalGraphBuilder:
 
         main_graph = StateGraph(MeteorologicalAgentState)
 
-        main_graph.add_node("official_sources_module", lambda state: official_subgraph.invoke(state))
-        main_graph.add_node("social_media_module", lambda state: social_subgraph.invoke(state))
-        main_graph.add_node("feed_generation_module", lambda state: feed_subgraph.invoke(state))
+        main_graph.add_node(
+            "official_sources_module", lambda state: official_subgraph.invoke(state)
+        )
+        main_graph.add_node(
+            "social_media_module", lambda state: social_subgraph.invoke(state)
+        )
+        main_graph.add_node(
+            "feed_generation_module", lambda state: feed_subgraph.invoke(state)
+        )
         main_graph.add_node("feed_aggregator", node.aggregate_and_store_feeds)
 
         main_graph.set_entry_point("official_sources_module")

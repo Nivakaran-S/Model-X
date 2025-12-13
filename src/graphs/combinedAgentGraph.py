@@ -15,6 +15,7 @@ from src.nodes.combinedAgentNode import CombinedAgentNode
 
 try:
     from src.config.langsmith_config import LangSmithConfig
+
     _langsmith = LangSmithConfig()
     _langsmith.configure()
 except ImportError:
@@ -50,7 +51,9 @@ class CombinedAgentGraphBuilder:
             try:
                 result = social_graph.invoke({})
                 insights = result.get("domain_insights", [])
-                logger.info(f"[CombinedGraph] SocialAgent returned {len(insights)} insights")
+                logger.info(
+                    f"[CombinedGraph] SocialAgent returned {len(insights)} insights"
+                )
                 return {"domain_insights": insights}
             except Exception as e:
                 logger.error(f"[CombinedGraph] SocialAgent FAILED: {e}")
@@ -61,7 +64,9 @@ class CombinedAgentGraphBuilder:
             try:
                 result = intelligence_graph.invoke({})
                 insights = result.get("domain_insights", [])
-                logger.info(f"[CombinedGraph] IntelligenceAgent returned {len(insights)} insights")
+                logger.info(
+                    f"[CombinedGraph] IntelligenceAgent returned {len(insights)} insights"
+                )
                 return {"domain_insights": insights}
             except Exception as e:
                 logger.error(f"[CombinedGraph] IntelligenceAgent FAILED: {e}")
@@ -72,7 +77,9 @@ class CombinedAgentGraphBuilder:
             try:
                 result = economical_graph.invoke({})
                 insights = result.get("domain_insights", [])
-                logger.info(f"[CombinedGraph] EconomicalAgent returned {len(insights)} insights")
+                logger.info(
+                    f"[CombinedGraph] EconomicalAgent returned {len(insights)} insights"
+                )
                 return {"domain_insights": insights}
             except Exception as e:
                 logger.error(f"[CombinedGraph] EconomicalAgent FAILED: {e}")
@@ -83,7 +90,9 @@ class CombinedAgentGraphBuilder:
             try:
                 result = political_graph.invoke({})
                 insights = result.get("domain_insights", [])
-                logger.info(f"[CombinedGraph] PoliticalAgent returned {len(insights)} insights")
+                logger.info(
+                    f"[CombinedGraph] PoliticalAgent returned {len(insights)} insights"
+                )
                 return {"domain_insights": insights}
             except Exception as e:
                 logger.error(f"[CombinedGraph] PoliticalAgent FAILED: {e}")
@@ -94,7 +103,9 @@ class CombinedAgentGraphBuilder:
             try:
                 result = meteorological_graph.invoke({})
                 insights = result.get("domain_insights", [])
-                logger.info(f"[CombinedGraph] MeteorologicalAgent returned {len(insights)} insights")
+                logger.info(
+                    f"[CombinedGraph] MeteorologicalAgent returned {len(insights)} insights"
+                )
                 return {"domain_insights": insights}
             except Exception as e:
                 logger.error(f"[CombinedGraph] MeteorologicalAgent FAILED: {e}")

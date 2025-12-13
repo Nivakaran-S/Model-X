@@ -14,6 +14,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -26,6 +27,7 @@ logging.basicConfig(
 try:
     import chromadb
     from chromadb.config import Settings
+
     CHROMA_AVAILABLE = True
 except ImportError:
     CHROMA_AVAILABLE = False
@@ -37,6 +39,7 @@ try:
     from langchain_core.messages import HumanMessage, AIMessage
     from langchain_core.output_parsers import StrOutputParser
     from langchain_core.runnables import RunnablePassthrough
+
     LANGCHAIN_AVAILABLE = True
 except ImportError:
     LANGCHAIN_AVAILABLE = False
@@ -45,6 +48,7 @@ except ImportError:
 # Neo4j for graph-based retrieval
 try:
     from neo4j import GraphDatabase
+
     NEO4J_AVAILABLE = True
 except ImportError:
     NEO4J_AVAILABLE = False
@@ -53,9 +57,18 @@ except ImportError:
 
 # Keywords that indicate a graph/relationship query
 GRAPH_KEYWORDS = [
-    "connected", "related", "timeline", "before", "after", 
-    "caused by", "followed by", "similar to", "linked", 
-    "what happened", "sequence", "chain of events"
+    "connected",
+    "related",
+    "timeline",
+    "before",
+    "after",
+    "caused by",
+    "followed by",
+    "similar to",
+    "linked",
+    "what happened",
+    "sequence",
+    "chain of events",
 ]
 
 
@@ -67,31 +80,31 @@ def is_graph_query(question: str) -> bool:
 
 class Neo4jRetriever:
     """Graph-based retrieval for relationship queries with LAZY initialization."""
-    
+
     def __init__(self):
         self.driver = None
         self._initialized = False
         self._init_attempted = False
-        
+
     def _lazy_init(self):
         """Lazy initialization - only connect when actually needed."""
         if self._init_attempted:
             return self.driver is not None
-            
+
         self._init_attempted = True
-        
+
         if not NEO4J_AVAILABLE:
             logger.info("[Neo4jRetriever] Neo4j package not installed")
             return False
-            
+
         neo4j_uri = os.getenv("NEO4J_URI", "")
         neo4j_user = os.getenv("NEO4J_USER", "neo4j")
         neo4j_password = os.getenv("NEO4J_PASSWORD", "")
-        
+
         if not neo4j_uri or not neo4j_password:
             logger.info("[Neo4jRetriever] Neo4j credentials not configured - skipping")
             return False
-            
+
         try:
             self.driver = GraphDatabase.driver(
                 neo4j_uri, auth=(neo4j_user, neo4j_password)
@@ -101,15 +114,17 @@ class Neo4jRetriever:
             logger.info(f"[Neo4jRetriever] Connected to {neo4j_uri}")
             return True
         except Exception as e:
-            logger.warning(f"[Neo4jRetriever] Connection failed (will skip graph queries): {e}")
+            logger.warning(
+                f"[Neo4jRetriever] Connection failed (will skip graph queries): {e}"
+            )
             self.driver = None
             return False
-    
+
     def get_related_events(self, keyword: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Find events containing keyword and their related events."""
         if not self._lazy_init():
             return []
-            
+
         try:
             with self.driver.session() as session:
                 query = """
@@ -126,31 +141,35 @@ class Neo4jRetriever:
                 LIMIT $limit
                 """
                 results = session.run(query, keyword=keyword, limit=limit)
-                
+
                 events = []
                 for record in results:
-                    events.append({
-                        "event_id": record["event_id"],
-                        "content": record["summary"],
-                        "domain": record["domain"],
-                        "severity": record["severity"],
-                        "timestamp": record["timestamp"],
-                        "related": record["related_summaries"],
-                        "source": "neo4j_graph"
-                    })
-                
-                logger.info(f"[Neo4jRetriever] Found {len(events)} events for '{keyword}'")
+                    events.append(
+                        {
+                            "event_id": record["event_id"],
+                            "content": record["summary"],
+                            "domain": record["domain"],
+                            "severity": record["severity"],
+                            "timestamp": record["timestamp"],
+                            "related": record["related_summaries"],
+                            "source": "neo4j_graph",
+                        }
+                    )
+
+                logger.info(
+                    f"[Neo4jRetriever] Found {len(events)} events for '{keyword}'"
+                )
                 return events
-                
+
         except Exception as e:
             logger.error(f"[Neo4jRetriever] Query error: {e}")
             return []
-    
+
     def get_domain_events(self, domain: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Get recent events by domain with relationships."""
         if not self._lazy_init():
             return []
-            
+
         try:
             with self.driver.session() as session:
                 query = """
@@ -165,30 +184,32 @@ class Neo4jRetriever:
                 LIMIT $limit
                 """
                 results = session.run(query, domain=domain.lower(), limit=limit)
-                
+
                 events = []
                 for record in results:
-                    events.append({
-                        "event_id": record["event_id"],
-                        "content": record["summary"],
-                        "domain": domain,
-                        "severity": record["severity"],
-                        "timestamp": record["timestamp"],
-                        "related_count": record["related_count"],
-                        "source": "neo4j_graph"
-                    })
-                
+                    events.append(
+                        {
+                            "event_id": record["event_id"],
+                            "content": record["summary"],
+                            "domain": domain,
+                            "severity": record["severity"],
+                            "timestamp": record["timestamp"],
+                            "related_count": record["related_count"],
+                            "source": "neo4j_graph",
+                        }
+                    )
+
                 return events
-                
+
         except Exception as e:
             logger.error(f"[Neo4jRetriever] Domain query error: {e}")
             return []
-    
+
     def get_event_chain(self, keyword: str, depth: int = 3) -> List[Dict[str, Any]]:
         """Get temporal chain of related events."""
         if not self._lazy_init():
             return []
-            
+
         try:
             with self.driver.session() as session:
                 query = """
@@ -203,36 +224,39 @@ class Neo4jRetriever:
                 LIMIT 1
                 """
                 result = session.run(query, keyword=keyword).single()
-                
+
                 if result:
-                    return [{
-                        "event_id": result["start_id"],
-                        "content": result["start_summary"],
-                        "timestamp": result["start_time"],
-                        "chain": result["chain"],
-                        "source": "neo4j_chain"
-                    }]
+                    return [
+                        {
+                            "event_id": result["start_id"],
+                            "content": result["start_summary"],
+                            "timestamp": result["start_time"],
+                            "chain": result["chain"],
+                            "source": "neo4j_chain",
+                        }
+                    ]
                 return []
-                
+
         except Exception as e:
             logger.error(f"[Neo4jRetriever] Chain query error: {e}")
             return []
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get Neo4j graph statistics."""
         if not self._initialized or not self.driver:
-            return {"status": "not_initialized" if not self._init_attempted else "disconnected"}
-            
+            return {
+                "status": (
+                    "not_initialized" if not self._init_attempted else "disconnected"
+                )
+            }
+
         try:
             with self.driver.session() as session:
                 event_count = session.run(
                     "MATCH (e:Event) RETURN COUNT(e) as count"
                 ).single()["count"]
-                
-                return {
-                    "status": "connected",
-                    "total_events": event_count
-                }
+
+                return {"status": "connected", "total_events": event_count}
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
@@ -246,9 +270,10 @@ class MultiCollectionRetriever:
         )
         self.client = None
         self.collections: Dict[str, Any] = {}
-        
+
         # Thread pool for parallel queries
         from concurrent.futures import ThreadPoolExecutor
+
         self._executor = ThreadPoolExecutor(max_workers=4)
 
         if not CHROMA_AVAILABLE:
@@ -267,7 +292,9 @@ class MultiCollectionRetriever:
             all_collections = self.client.list_collections()
             available_names = [c.name for c in all_collections]
 
-            logger.info(f"[RAG] Found {len(all_collections)} collections: {available_names}")
+            logger.info(
+                f"[RAG] Found {len(all_collections)} collections: {available_names}"
+            )
 
             for name in self.COLLECTIONS:
                 if name in available_names:
@@ -289,7 +316,12 @@ class MultiCollectionRetriever:
             self.client = None
 
     def _query_single_collection(
-        self, name: str, collection, query: str, n_results: int, domain_filter: Optional[str]
+        self,
+        name: str,
+        collection,
+        query: str,
+        n_results: int,
+        domain_filter: Optional[str],
     ) -> List[Dict[str, Any]]:
         """Query a single collection - used for parallel execution."""
         results_list = []
@@ -310,18 +342,20 @@ class MultiCollectionRetriever:
 
                     similarity = 1.0 - min(distance / 2.0, 1.0)
 
-                    results_list.append({
-                        "id": doc_id,
-                        "content": doc,
-                        "metadata": meta,
-                        "similarity": similarity,
-                        "collection": name,
-                        "domain": meta.get("domain", "unknown"),
-                    })
+                    results_list.append(
+                        {
+                            "id": doc_id,
+                            "content": doc,
+                            "metadata": meta,
+                            "similarity": similarity,
+                            "collection": name,
+                            "domain": meta.get("domain", "unknown"),
+                        }
+                    )
 
         except Exception as e:
             logger.warning(f"[RAG] Error querying {name}: {e}")
-        
+
         return results_list
 
     def search(
@@ -333,15 +367,19 @@ class MultiCollectionRetriever:
 
         # Submit parallel queries to all collections
         from concurrent.futures import as_completed
-        
+
         futures = {}
         for name, collection in self.collections.items():
             future = self._executor.submit(
-                self._query_single_collection, 
-                name, collection, query, n_results, domain_filter
+                self._query_single_collection,
+                name,
+                collection,
+                query,
+                n_results,
+                domain_filter,
             )
             futures[future] = name
-        
+
         # Collect results as they complete (fastest first)
         all_results = []
         for future in as_completed(futures, timeout=10.0):  # 10s timeout
@@ -349,7 +387,9 @@ class MultiCollectionRetriever:
                 results = future.result()
                 all_results.extend(results)
             except Exception as e:
-                logger.warning(f"[RAG] Parallel query failed for {futures[future]}: {e}")
+                logger.warning(
+                    f"[RAG] Parallel query failed for {futures[future]}: {e}"
+                )
 
         all_results.sort(key=lambda x: x["similarity"], reverse=True)
         return all_results[: n_results * 2]
@@ -408,24 +448,54 @@ class RogerRAG:
         """Extract key terms from question for graph search."""
         # Remove common stopwords
         stopwords = {
-            "what", "when", "where", "who", "why", "how", "is", "are", "was", 
-            "were", "the", "a", "an", "to", "of", "in", "on", "for", "with",
-            "about", "related", "connected", "happened", "after", "before",
-            "show", "me", "tell", "find", "get", "events", "timeline"
+            "what",
+            "when",
+            "where",
+            "who",
+            "why",
+            "how",
+            "is",
+            "are",
+            "was",
+            "were",
+            "the",
+            "a",
+            "an",
+            "to",
+            "of",
+            "in",
+            "on",
+            "for",
+            "with",
+            "about",
+            "related",
+            "connected",
+            "happened",
+            "after",
+            "before",
+            "show",
+            "me",
+            "tell",
+            "find",
+            "get",
+            "events",
+            "timeline",
         }
-        
+
         words = question.lower().replace("?", "").replace(",", "").split()
         keywords = [w for w in words if w not in stopwords and len(w) > 2]
-        
+
         return keywords[:5]  # Return top 5 keywords
 
-    def _format_context(self, docs: List[Dict[str, Any]], include_graph: bool = False) -> str:
+    def _format_context(
+        self, docs: List[Dict[str, Any]], include_graph: bool = False
+    ) -> str:
         if not docs:
             return "No relevant intelligence data found."
 
         context_parts = []
         now = datetime.now()
-        
+
         # Separate ChromaDB and Neo4j results
         chroma_docs = [d for d in docs if d.get("source") != "neo4j_graph"]
         graph_docs = [d for d in docs if d.get("source") == "neo4j_graph"]
@@ -472,7 +542,7 @@ class RogerRAG:
                 f"TIMESTAMP: {timestamp} ({age_str})\n"
                 f"{doc['content']}\n"
             )
-        
+
         # Format Neo4j graph results (if any)
         if graph_docs:
             context_parts.append("\n=== RELATED EVENTS FROM KNOWLEDGE GRAPH ===\n")
@@ -481,7 +551,7 @@ class RogerRAG:
                 related_str = ""
                 if related:
                     related_str = f"\n  Related events: {', '.join(str(r)[:50] + '...' for r in related[:2])}"
-                    
+
                 context_parts.append(
                     f"[Graph {i}] Domain: {doc.get('domain', 'unknown')} | "
                     f"Severity: {doc.get('severity', 'unknown')}\n"
@@ -534,23 +604,25 @@ class RogerRAG:
         docs = self.retriever.search(
             search_question, n_results=5, domain_filter=domain_filter
         )
-        
+
         # Neo4j graph search (for relationship queries) - only if enabled
         graph_docs = []
         used_graph = False
         if self.neo4j_retriever and is_graph_query(search_question):
             logger.info(f"[RAG] Graph query detected: '{search_question}'")
             used_graph = True
-            
+
             # Extract keywords for graph search
             # Simple: use first nouns/keywords from question
             keywords = self._extract_keywords(search_question)
-            
+
             for keyword in keywords[:2]:  # Limit to 2 keywords
-                graph_docs.extend(self.neo4j_retriever.get_related_events(keyword, limit=3))
-                
+                graph_docs.extend(
+                    self.neo4j_retriever.get_related_events(keyword, limit=3)
+                )
+
             logger.info(f"[RAG] Graph retrieval: {len(graph_docs)} docs from Neo4j")
-        
+
         # Merge results (ChromaDB + Neo4j)
         all_docs = docs + graph_docs
 
@@ -559,7 +631,9 @@ class RogerRAG:
                 "answer": "I couldn't find any relevant intelligence data to answer your question.",
                 "sources": [],
                 "question": question,
-                "reformulated": search_question if search_question != question else None,
+                "reformulated": (
+                    search_question if search_question != question else None
+                ),
             }
 
         context = self._format_context(all_docs, include_graph=used_graph)
@@ -572,10 +646,11 @@ class RogerRAG:
             }
 
         current_date = datetime.now().strftime("%B %d, %Y")
-        rag_prompt = ChatPromptTemplate.from_messages([
-            (
-                "system",
-                f"""You are Roger, an AI intelligence analyst for Sri Lanka.
+        rag_prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    f"""You are Roger, an AI intelligence analyst for Sri Lanka.
             
 TODAY'S DATE: {current_date}
 
@@ -592,10 +667,11 @@ Be concise but informative. Cite source timestamps when available.
             
 Context:
 {{context}}""",
-            ),
-            MessagesPlaceholder(variable_name="history"),
-            ("human", "{question}"),
-        ])
+                ),
+                MessagesPlaceholder(variable_name="history"),
+                ("human", "{question}"),
+            ]
+        )
 
         history_messages = []
         for human, ai in self.chat_history[-5:]:
@@ -613,18 +689,22 @@ Context:
             sources_summary = []
             for doc in docs[:5]:
                 meta = doc.get("metadata", {})
-                sources_summary.append({
-                    "domain": meta.get("domain", "unknown"),
-                    "platform": meta.get("platform", "unknown"),
-                    "category": meta.get("category", ""),
-                    "similarity": round(doc["similarity"], 3),
-                })
+                sources_summary.append(
+                    {
+                        "domain": meta.get("domain", "unknown"),
+                        "platform": meta.get("platform", "unknown"),
+                        "category": meta.get("category", ""),
+                        "similarity": round(doc["similarity"], 3),
+                    }
+                )
 
             return {
                 "answer": answer,
                 "sources": sources_summary,
                 "question": question,
-                "reformulated": search_question if search_question != question else None,
+                "reformulated": (
+                    search_question if search_question != question else None
+                ),
                 "docs_found": len(docs),
             }
 
@@ -702,7 +782,9 @@ def run_cli():
             if result.get("sources"):
                 print(f"\nSources ({len(result['sources'])} found):")
                 for i, src in enumerate(result["sources"][:3], 1):
-                    print(f"   {i}. {src['domain']} | {src['platform']} | Relevance: {src['similarity']:.0%}")
+                    print(
+                        f"   {i}. {src['domain']} | {src['platform']} | Relevance: {src['similarity']:.0%}"
+                    )
 
             if result.get("reformulated"):
                 print(f"\n(Interpreted as: {result['reformulated']})")

@@ -46,13 +46,15 @@ class DataRetrievalAgentGraph(DataRetrievalAgentNode):
         insights = []
 
         for event in classified_events:
-            insights.append({
-                "source_event_id": event.event_id,
-                "domain": event.target_agent,
-                "severity": "medium",
-                "summary": event.content_summary,
-                "risk_score": event.confidence_score,
-            })
+            insights.append(
+                {
+                    "source_event_id": event.event_id,
+                    "domain": event.target_agent,
+                    "severity": "medium",
+                    "summary": event.content_summary,
+                    "risk_score": event.confidence_score,
+                }
+            )
 
         print(f"[DATA RETRIEVAL] Formatted {len(insights)} insights for parent graph")
         return {"domain_insights": insights}
@@ -65,7 +67,9 @@ class DataRetrievalAgentGraph(DataRetrievalAgentNode):
         workflow.add_node("prepare_worker_tasks", self.prepare_worker_tasks)
         workflow.add_node(
             "worker",
-            lambda state: {"worker": worker_graph.map().invoke(state.tasks_for_workers)},
+            lambda state: {
+                "worker": worker_graph.map().invoke(state.tasks_for_workers)
+            },
         )
         workflow.add_node("aggregate_results", self.aggregate_results)
         workflow.add_node("classifier_agent", self.classifier_agent_node)

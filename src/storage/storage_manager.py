@@ -20,6 +20,7 @@ logger = logging.getLogger("storage_manager")
 # Trending detection integration
 try:
     from ..utils.trending_detector import record_topic_mention
+
     TRENDING_AVAILABLE = True
 except ImportError:
     TRENDING_AVAILABLE = False
@@ -156,43 +157,84 @@ class StorageManager:
     def _extract_keywords(self, text: str, max_keywords: int = 5) -> List[str]:
         """
         Extract significant keywords from text for trending detection.
-        
+
         Args:
             text: Text to extract keywords from
             max_keywords: Maximum number of keywords to return
-            
+
         Returns:
             List of keywords (2-3 word phrases)
         """
         # Common stopwords to filter out
         stopwords = {
-            "the", "is", "at", "which", "on", "a", "an", "and", "or", "but",
-            "in", "with", "to", "for", "of", "as", "by", "from", "that", "this",
-            "be", "are", "was", "were", "been", "being", "have", "has", "had",
-            "do", "does", "did", "will", "would", "could", "should", "may",
-            "might", "must", "shall", "can", "need", "dare", "ought", "used",
-            "सिंहल", "தமிழ்",  # Common Sinhala/Tamil particles
+            "the",
+            "is",
+            "at",
+            "which",
+            "on",
+            "a",
+            "an",
+            "and",
+            "or",
+            "but",
+            "in",
+            "with",
+            "to",
+            "for",
+            "of",
+            "as",
+            "by",
+            "from",
+            "that",
+            "this",
+            "be",
+            "are",
+            "was",
+            "were",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "must",
+            "shall",
+            "can",
+            "need",
+            "dare",
+            "ought",
+            "used",
+            "सिंहल",
+            "தமிழ்",  # Common Sinhala/Tamil particles
         }
-        
+
         # Clean text
         text = text.lower()
-        text = re.sub(r'http\S+|www\.\S+', '', text)  # Remove URLs
-        text = re.sub(r'[^\w\s]', ' ', text)  # Remove punctuation
-        
+        text = re.sub(r"http\S+|www\.\S+", "", text)  # Remove URLs
+        text = re.sub(r"[^\w\s]", " ", text)  # Remove punctuation
+
         # Split into words
         words = text.split()
-        
+
         # Filter stopwords and short words
         filtered = [w for w in words if w not in stopwords and len(w) > 2]
-        
+
         # Extract significant words (prioritize proper nouns, locations, etc.)
         keywords = []
-        
+
         # Single important words (capitalized in original or long words)
         for word in filtered[:20]:
             if len(word) > 4:  # Longer words are often more significant
                 keywords.append(word)
-        
+
         # Deduplicate and limit
         seen = set()
         unique_keywords = []
@@ -200,18 +242,15 @@ class StorageManager:
             if kw not in seen:
                 seen.add(kw)
                 unique_keywords.append(kw)
-        
+
         return unique_keywords[:max_keywords]
 
     def _record_trending_mentions(
-        self, 
-        summary: str, 
-        domain: str, 
-        metadata: Optional[Dict[str, Any]] = None
+        self, summary: str, domain: str, metadata: Optional[Dict[str, Any]] = None
     ):
         """
         Extract keywords from summary and record them for trending detection.
-        
+
         Args:
             summary: Event summary text
             domain: Event domain (political, economical, etc.)
@@ -220,17 +259,15 @@ class StorageManager:
         try:
             keywords = self._extract_keywords(summary)
             source = metadata.get("platform", "scraper") if metadata else "scraper"
-            
+
             for keyword in keywords:
-                record_topic_mention(
-                    topic=keyword,
-                    source=source,
-                    domain=domain
-                )
-            
+                record_topic_mention(topic=keyword, source=source, domain=domain)
+
             if keywords:
-                logger.debug(f"[TRENDING] Recorded {len(keywords)} keywords: {keywords[:3]}...")
-                
+                logger.debug(
+                    f"[TRENDING] Recorded {len(keywords)} keywords: {keywords[:3]}..."
+                )
+
         except Exception as e:
             logger.warning(f"[TRENDING] Error recording mentions: {e}")
 

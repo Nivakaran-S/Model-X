@@ -13,14 +13,18 @@ class IntelligenceGraphBuilder:
     def __init__(self, llm):
         self.llm = llm
 
-    def build_profile_monitoring_subgraph(self, node: IntelligenceAgentNode) -> StateGraph:
+    def build_profile_monitoring_subgraph(
+        self, node: IntelligenceAgentNode
+    ) -> StateGraph:
         subgraph = StateGraph(IntelligenceAgentState)
         subgraph.add_node("monitor_profiles", node.collect_profile_activity)
         subgraph.set_entry_point("monitor_profiles")
         subgraph.add_edge("monitor_profiles", END)
         return subgraph.compile()
 
-    def build_competitive_intelligence_subgraph(self, node: IntelligenceAgentNode) -> StateGraph:
+    def build_competitive_intelligence_subgraph(
+        self, node: IntelligenceAgentNode
+    ) -> StateGraph:
         subgraph = StateGraph(IntelligenceAgentState)
 
         subgraph.add_node("competitor_mentions", node.collect_competitor_mentions)
@@ -60,9 +64,16 @@ class IntelligenceGraphBuilder:
 
         main_graph = StateGraph(IntelligenceAgentState)
 
-        main_graph.add_node("profile_monitoring_module", lambda state: profile_subgraph.invoke(state))
-        main_graph.add_node("competitive_intelligence_module", lambda state: intelligence_subgraph.invoke(state))
-        main_graph.add_node("feed_generation_module", lambda state: feed_subgraph.invoke(state))
+        main_graph.add_node(
+            "profile_monitoring_module", lambda state: profile_subgraph.invoke(state)
+        )
+        main_graph.add_node(
+            "competitive_intelligence_module",
+            lambda state: intelligence_subgraph.invoke(state),
+        )
+        main_graph.add_node(
+            "feed_generation_module", lambda state: feed_subgraph.invoke(state)
+        )
         main_graph.add_node("feed_aggregator", node.aggregate_and_store_feeds)
 
         main_graph.set_entry_point("profile_monitoring_module")
