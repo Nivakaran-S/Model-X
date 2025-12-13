@@ -16,6 +16,20 @@ wheels/
 .langgraph_api
 
 # =============================================================================
+# BROWSER DATA (Playwright/Chromium session files - very large)
+# =============================================================================
+.browser_data/
+**/.*_browser_data/
+**/.browser_data/
+**/ShaderCache/
+**/GraphiteDawnCache/
+**/GrShaderCache/
+**/.sessions/
+**/Session Storage/
+**/Local Storage/
+**/Service Worker/
+
+# =============================================================================
 # ML MODEL ARTIFACTS (Large files - don't push to Git)
 # =============================================================================
 
