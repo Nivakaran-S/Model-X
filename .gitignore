@@ -33,22 +33,32 @@ wheels/
 # ML MODEL ARTIFACTS (Large files - don't push to Git)
 # =============================================================================
 
-# Trained model weights (large binary files)
-*.h5
-*.hdf5
-*.joblib
-*.pkl
+# Trained model weights (large binary files) - EXCEPT LFS tracked ones
+# Note: We use git lfs for .h5 and .joblib model files we want to push
+# *.h5
+# *.hdf5
+# *.joblib
+# *.pkl
 *.pickle
 *.pt
 *.pth
 *.onnx
 *.pb
 
-# Model output directories
-models/*/artifacts/models/
+# Model output directories (training intermediates - regenerable)
+**/Artifacts/
+**/artifacts/data_ingestion/
+**/artifacts/data_validation/
+**/artifacts/data_transformation/
+**/artifacts/model_evaluation/
 models/*/output/
 models/*/models_cache/
 models/*/checkpoints/
+
+# Data files
+*.parquet
+*.npy
+*.csv
 
 # Airflow local state
 models/*/.astro/
