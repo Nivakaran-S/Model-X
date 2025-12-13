@@ -1572,6 +1572,7 @@ def tool_commodity_prices() -> Dict[str, Any]:
     """
     Get prices for essential commodities in Sri Lanka.
 
+    Scrapes live price updates from multiple news sources.
     Includes rice, sugar, dhal, milk powder, and other staples.
 
     Returns:
@@ -1586,123 +1587,126 @@ def tool_commodity_prices() -> Dict[str, Any]:
             logger.info(f"[COMMODITY] Using cached data ({cache_age:.1f} min old)")
             return _commodity_cache
 
-    logger.info("[COMMODITY] Fetching commodity prices...")
+    logger.info("[COMMODITY] Fetching live commodity prices from news sources...")
 
-    # Current approximate commodity prices (LKR)
+    # Baseline commodity prices (LKR) - these are reference values
+    # Will be updated if live data is found from news sources
+    commodities = [
+        {"name": "White Rice (Nadu)", "price": 220, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
+        {"name": "White Rice (Samba)", "price": 250, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
+        {"name": "Red Rice", "price": 240, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
+        {"name": "Wheat Flour", "price": 195, "unit": "LKR/kg", "change": 0, "category": "grains", "live": False},
+        {"name": "Sugar (White)", "price": 240, "unit": "LKR/kg", "change": 0, "category": "essentials", "live": False},
+        {"name": "Dhal (Mysore)", "price": 510, "unit": "LKR/kg", "change": 0, "category": "pulses", "live": False},
+        {"name": "Dhal (Red)", "price": 340, "unit": "LKR/kg", "change": 0, "category": "pulses", "live": False},
+        {"name": "Milk Powder (400g)", "price": 1250, "unit": "LKR/pack", "change": 0, "category": "dairy", "live": False},
+        {"name": "Coconut Oil", "price": 680, "unit": "LKR/L", "change": 0, "category": "cooking", "live": False},
+        {"name": "Coconut (Fresh)", "price": 120, "unit": "LKR/each", "change": 0, "category": "cooking", "live": False},
+        {"name": "Eggs (10)", "price": 480, "unit": "LKR/10", "change": 0, "category": "protein", "live": False},
+        {"name": "Chicken", "price": 1350, "unit": "LKR/kg", "change": 0, "category": "protein", "live": False},
+        {"name": "Big Onion", "price": 280, "unit": "LKR/kg", "change": 0, "category": "vegetables", "live": False},
+        {"name": "Potatoes", "price": 350, "unit": "LKR/kg", "change": 0, "category": "vegetables", "live": False},
+        {"name": "LP Gas (12.5kg)", "price": 4290, "unit": "LKR/cylinder", "change": 0, "category": "fuel", "live": False},
+    ]
+
+    live_updates = 0
+    news_sources = [
+        "https://www.dailymirror.lk/",
+        "https://www.dailyft.lk/",
+        "https://www.newsfirst.lk/",
+        "https://www.news.lk/",
+    ]
+
+    for news_url in news_sources:
+        try:
+            resp = _safe_get(news_url, timeout=15)
+            if not resp:
+                continue
+
+            soup = BeautifulSoup(resp.text, "html.parser")
+            page_text = soup.get_text(separator=" ", strip=True).lower()
+
+            # LP Gas price (most commonly announced)
+            gas_patterns = [
+                r"lp\s*gas[:\s]*(?:rs\.?|lkr)?\s*(\d{4})",
+                r"gas\s*(?:cylinder|12\.5\s*kg)[:\s]*(?:rs\.?|lkr)?\s*(\d{4})",
+                r"litro\s*gas[:\s]*(?:rs\.?|lkr)?\s*(\d{4})",
+            ]
+            for pattern in gas_patterns:
+                gas_match = re.search(pattern, page_text)
+                if gas_match:
+                    try:
+                        new_price = int(gas_match.group(1))
+                        if 3000 <= new_price <= 6000:  # Sanity check
+                            for item in commodities:
+                                if "LP Gas" in item["name"]:
+                                    old_price = item["price"]
+                                    item["price"] = new_price
+                                    item["change"] = new_price - old_price
+                                    item["live"] = True
+                                    live_updates += 1
+                                    break
+                            break
+                    except ValueError:
+                        pass
+
+            # Rice prices
+            rice_patterns = [
+                (r"nadu\s*(?:rice)?[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", "White Rice (Nadu)"),
+                (r"samba\s*(?:rice)?[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", "White Rice (Samba)"),
+                (r"red\s*rice[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", "Red Rice"),
+            ]
+            for pattern, name in rice_patterns:
+                match = re.search(pattern, page_text)
+                if match:
+                    try:
+                        new_price = int(match.group(1))
+                        if 150 <= new_price <= 400:  # Sanity check
+                            for item in commodities:
+                                if item["name"] == name:
+                                    old_price = item["price"]
+                                    item["price"] = new_price
+                                    item["change"] = new_price - old_price
+                                    item["live"] = True
+                                    live_updates += 1
+                                    break
+                            break
+                    except ValueError:
+                        pass
+
+            # Sugar price
+            sugar_match = re.search(r"sugar[:\s]*(?:rs\.?|lkr)?\s*(\d{2,3})", page_text)
+            if sugar_match:
+                try:
+                    new_price = int(sugar_match.group(1))
+                    if 150 <= new_price <= 400:
+                        for item in commodities:
+                            if "Sugar" in item["name"]:
+                                old_price = item["price"]
+                                item["price"] = new_price
+                                item["change"] = new_price - old_price
+                                item["live"] = True
+                                live_updates += 1
+                                break
+                except ValueError:
+                    pass
+
+        except Exception as e:
+            logger.debug(f"[COMMODITY] Error scraping {news_url}: {e}")
+            continue
+
+    # Build result
     result = {
-        "commodities": [
-            {
-                "name": "White Rice (Nadu)",
-                "price": 220,
-                "unit": "LKR/kg",
-                "change": 0,
-                "category": "grains",
-            },
-            {
-                "name": "White Rice (Samba)",
-                "price": 250,
-                "unit": "LKR/kg",
-                "change": 0,
-                "category": "grains",
-            },
-            {
-                "name": "Red Rice",
-                "price": 240,
-                "unit": "LKR/kg",
-                "change": 0,
-                "category": "grains",
-            },
-            {
-                "name": "Wheat Flour",
-                "price": 195,
-                "unit": "LKR/kg",
-                "change": -5,
-                "category": "grains",
-            },
-            {
-                "name": "Sugar (White)",
-                "price": 240,
-                "unit": "LKR/kg",
-                "change": 0,
-                "category": "essentials",
-            },
-            {
-                "name": "Dhal (Mysore)",
-                "price": 510,
-                "unit": "LKR/kg",
-                "change": 10,
-                "category": "pulses",
-            },
-            {
-                "name": "Dhal (Red)",
-                "price": 340,
-                "unit": "LKR/kg",
-                "change": 0,
-                "category": "pulses",
-            },
-            {
-                "name": "Milk Powder (400g)",
-                "price": 1250,
-                "unit": "LKR/pack",
-                "change": 0,
-                "category": "dairy",
-            },
-            {
-                "name": "Coconut Oil",
-                "price": 680,
-                "unit": "LKR/L",
-                "change": -20,
-                "category": "cooking",
-            },
-            {
-                "name": "Coconut (Fresh)",
-                "price": 120,
-                "unit": "LKR/each",
-                "change": 10,
-                "category": "cooking",
-            },
-            {
-                "name": "Eggs (10)",
-                "price": 480,
-                "unit": "LKR/10",
-                "change": 0,
-                "category": "protein",
-            },
-            {
-                "name": "Chicken",
-                "price": 1350,
-                "unit": "LKR/kg",
-                "change": 50,
-                "category": "protein",
-            },
-            {
-                "name": "Big Onion",
-                "price": 280,
-                "unit": "LKR/kg",
-                "change": -10,
-                "category": "vegetables",
-            },
-            {
-                "name": "Potatoes",
-                "price": 350,
-                "unit": "LKR/kg",
-                "change": 20,
-                "category": "vegetables",
-            },
-            {
-                "name": "LP Gas (12.5kg)",
-                "price": 4290,
-                "unit": "LKR/cylinder",
-                "change": 0,
-                "category": "fuel",
-            },
-        ],
-        "source": "Consumer Affairs Authority / Market Survey",
+        "commodities": commodities,
+        "source": "Live news scraping" if live_updates > 0 else "Baseline data (CAA website unavailable)",
         "fetched_at": utc_now().isoformat(),
+        "live_updates": live_updates,
         "summary": {
             "items_increased": 0,
             "items_decreased": 0,
             "items_stable": 0,
+            "items_live": live_updates,
+            "items_baseline": len(commodities) - live_updates,
         },
     }
 
@@ -1715,32 +1719,10 @@ def tool_commodity_prices() -> Dict[str, Any]:
         else:
             result["summary"]["items_stable"] += 1
 
-    try:
-        # Try to scrape news for price updates
-        resp = _safe_get("https://www.dailymirror.lk/", timeout=20)
-        if resp:
-            soup = BeautifulSoup(resp.text, "html.parser")
-            page_text = soup.get_text(separator=" ", strip=True).lower()
-
-            # Check for LP Gas price updates (commonly announced)
-            gas_match = re.search(r"lp\s*gas[:\s]*(?:rs\.?|lkr)?\s*(\d{4})", page_text)
-            if gas_match:
-                try:
-                    new_price = int(gas_match.group(1))
-                    for item in result["commodities"]:
-                        if "LP Gas" in item["name"]:
-                            old_price = item["price"]
-                            item["price"] = new_price
-                            item["change"] = new_price - old_price
-                            break
-                except ValueError:
-                    pass
-
-            logger.info("[COMMODITY] Successfully fetched commodity prices")
-
-    except Exception as e:
-        logger.warning(f"[COMMODITY] Scraping error: {e}")
-        result["error"] = str(e)
+    if live_updates > 0:
+        logger.info(f"[COMMODITY] ✓ Found {live_updates} live price updates from news sources")
+    else:
+        logger.info("[COMMODITY] Using baseline data - no live updates found in news")
 
     # Update cache
     _commodity_cache = result
