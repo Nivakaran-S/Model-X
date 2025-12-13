@@ -389,11 +389,9 @@ class RogerRAG:
             }
 
         current_date = datetime.now().strftime("%B %d, %Y")
-        rag_prompt = ChatPromptTemplate.from_messages(
-            [
-                (
-                    "system",
-                    f"""You are Roger, an AI intelligence analyst for Sri Lanka.
+        
+        # Build system prompt with context embedded
+        system_content = f"""You are Roger, an AI intelligence analyst for Sri Lanka.
             
 TODAY'S DATE: {current_date}
 
@@ -409,8 +407,11 @@ Answer questions based ONLY on the provided intelligence context.
 Be concise but informative. Cite source timestamps when available.
             
 Context:
-{{context}}""",
-                ),
+{context}"""
+
+        rag_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", system_content),
                 MessagesPlaceholder(variable_name="history"),
                 ("human", "{question}"),
             ]
@@ -424,7 +425,7 @@ Context:
         try:
             chain = rag_prompt | self.llm | StrOutputParser()
             answer = chain.invoke(
-                {"context": context, "history": history_messages, "question": question}
+                {"history": history_messages, "question": question}
             )
 
             self.chat_history.append((question, answer))
