@@ -10,6 +10,7 @@ on:
 jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
       - name: Checkout repository
@@ -30,7 +31,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install huggingface_hub
-        run: pip install huggingface_hub
+        run: pip install huggingface_hub httpx
 
       - name: Push to Hugging Face Space
         env:
@@ -41,36 +42,59 @@ jobs:
           import os
           import time
           import httpx
-          
+
           token = os.environ['HF_TOKEN']
           login(token=token)
-          
-          # Configure longer timeout
-          os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '300'
-          
+
+          # Configure much longer timeout for large uploads
+          os.environ['HF_HUB_DOWNLOAD_TIMEOUT'] = '600'
+          os.environ['HTTPX_TIMEOUT'] = '600'
+
           api = HfApi()
-          
+
+          # Extensive ignore patterns to reduce upload size
+          ignore_patterns = [
+              # Python/Node
+              '*.pyc', '__pycache__', '.git', '.git/**', 'node_modules', 'node_modules/**',
+              '.venv', '.venv/**', '*.log', '.env',
+              # Data files (regenerable)
+              '*.parquet', '*.npy', '*.csv',
+              # Artifacts (training intermediates)
+              '**/Artifacts/**', '**/artifacts/data_*/**',
+              # GitHub workflows (not needed on HF)
+              '.github/**',
+              # Frontend node modules
+              'frontend/node_modules/**',
+              # Temp/cache
+              '*.tmp', '*.cache', '**/__pycache__/**',
+              # Browser data
+              '**/.browser_data/**', '**/ShaderCache/**', '**/GraphiteDawnCache/**',
+              # Model caches (BERT etc - download at runtime)
+              '**/models_cache/**',
+              # Logs
+              'logs/**', '*.log',
+          ]
+
           # Retry logic with exponential backoff
-          max_retries = 3
+          max_retries = 5
           for attempt in range(max_retries):
               try:
+                  print(f'Attempt {attempt + 1}/{max_retries}...')
                   api.upload_folder(
                       folder_path='.',
                       repo_id='nivakaran/modelx',
                       repo_type='space',
                       token=token,
-                      ignore_patterns=[
-                          '*.pyc', '__pycache__', '.git', 'node_modules', '*.log', '.env',
-                          '*.parquet', '*.npy', 'artifacts/**', 'models/*/artifacts/**',
-                          '.github/**', 'frontend/node_modules/**', '*.tmp', '*.cache'
-                      ]
+                      ignore_patterns=ignore_patterns,
+                      commit_message='Deploy from GitHub Actions'
                   )
                   print('✅ Successfully pushed to Hugging Face Space!')
                   break
-              except (httpx.ReadTimeout, httpx.ConnectTimeout, Exception) as e:
+              except Exception as e:
                   if attempt < max_retries - 1:
-                      wait_time = (2 ** attempt) * 30  # 30s, 60s, 120s
-                      print(f'⚠️ Attempt {attempt + 1} failed: {e}. Retrying in {wait_time}s...')
+                      wait_time = (2 ** attempt) * 60  # 60s, 120s, 240s, 480s
+                      print(f'⚠️ Attempt {attempt + 1} failed: {e}')
+                      print(f'Retrying in {wait_time}s...')
                       time.sleep(wait_time)
                   else:
                       print(f'❌ All {max_retries} attempts failed.')
@@ -84,3 +108,4 @@ jobs:
       - name: Sync Failed  
         if: failure()
         run: echo "❌ Failed to sync. Check if the Space exists at https://huggingface.co/spaces/nivakaran/modelx"
+
