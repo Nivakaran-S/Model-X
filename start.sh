@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# ModelX Platform - Hackathon Demo Launcher
-# This script starts both backend and frontend for the demo
+# ModelX Platform - Enterprise Startup Script
+# This script starts both backend and frontend services
 
 set -e
 
 echo "=========================================="
-echo "  🇱🇰 MODELX INTELLIGENCE PLATFORM"
-echo "     Hackathon Demo Startup"
+echo "  🚀 MODELX INTELLIGENCE PLATFORM"
+echo "     System Startup"
 echo "=========================================="
 echo ""
 
 # Check if .env exists
 if [ ! -f .env ]; then
     echo "❌ Error: .env file not found!"
-    echo "   Please copy .env.template to .env and add your GROQ_API_KEY"
+    echo "   Please copy .env.template to .env"
     exit 1
 fi
 
@@ -31,7 +31,7 @@ echo ""
 
 # Install Python dependencies
 echo "📦 Installing Python dependencies..."
-uv add -r requirements.txt > /dev/null 2>&1
+pip install -r requirements.txt > /dev/null 2>&1
 echo "✓ Python dependencies installed"
 echo ""
 

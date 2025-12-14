@@ -7,18 +7,18 @@ sdk: docker
 pinned: false
 ---
 
-# 🇱🇰 Roger Intelligence Platform
+# ModelX Intelligence Platform
 
-**Real-Time Situational Awareness for Sri Lanka**
+**Real-Time Situational Awareness System**
 
-A multi-agent AI system that aggregates intelligence from **50+ data sources** to provide risk analysis and opportunity detection for businesses operating in Sri Lanka.
+Enterprise-grade multi-agent AI system aggregating intelligence from 50+ data sources to provide risk analysis, opportunity detection, and predictive analytics.
 
 ## 🌐 Live Demo
 
 | Component | URL |
 |-----------|-----|
 | **Frontend Dashboard** | [https://model-x-frontend-snowy.vercel.app/](https://model-x-frontend-snowy.vercel.app/) |
-| **Backend API** | [https://nivakaran-Roger.hf.space](https://nivakaran-Roger.hf.space) |
+| **Backend API** | [API_URL] |
 
 ---
 
@@ -738,8 +738,7 @@ cp .env.template .env
 python models/anomaly-detection/download_models.py
 
 # 6. Launch all services
-./start_services.sh       # Linux/Mac
-.\start_services.ps1      # Windows
+./start.sh
 ```
 
 ---

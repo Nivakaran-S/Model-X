@@ -1,0 +1,25 @@
+[ 2025-12-14 06:33:54,614 ] 45 root - INFO - 
+============================================================
+[ 2025-12-14 06:33:54,615 ] 46 root - INFO - ANOMALY DETECTION TRAINING PIPELINE
+[ 2025-12-14 06:33:54,615 ] 47 root - INFO - Started at: 2025-12-14 06:33:54
+[ 2025-12-14 06:33:54,615 ] 48 root - INFO - Models to train: ['dbscan', 'kmeans', 'hdbscan', 'isolation_forest', 'lof']
+[ 2025-12-14 06:33:54,615 ] 49 root - INFO - MLflow experiment: anomaly_detection_feeds
+[ 2025-12-14 06:33:54,615 ] 50 root - INFO - ============================================================
+
+[ 2025-12-14 06:33:54,617 ] 37 data_ingestion - INFO - [DataIngestion] Initialized
+[ 2025-12-14 06:33:54,617 ] 38 data_ingestion - INFO -   SQLite: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+[ 2025-12-14 06:33:54,617 ] 39 data_ingestion - INFO -   CSV Dir: C:\Users\LENOVO\Desktop\ModelX-Ultimate\datasets\political_feeds
+[ 2025-12-14 06:33:54,617 ] 40 data_ingestion - INFO -   Output: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion
+[ 2025-12-14 06:33:54,617 ] 55 root - INFO - Starting data ingestion...
+[ 2025-12-14 06:33:54,617 ] 193 data_ingestion - INFO - [DataIngestion] Starting data ingestion...
+[ 2025-12-14 06:33:54,618 ] 52 data_ingestion - WARNING - [DataIngestion] SQLite DB not found: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+[ 2025-12-14 06:33:54,633 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 0 records from economic_feeds_202512.csv
+[ 2025-12-14 06:33:54,667 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 86 records from intelligence_feeds_202512.csv
+[ 2025-12-14 06:33:54,770 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 86 records from political_feeds_202512.csv
+[ 2025-12-14 06:33:54,804 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 71 records from social_feeds_202512.csv
+[ 2025-12-14 06:33:54,809 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 11 records from weather_feeds_202512.csv
+[ 2025-12-14 06:33:54,816 ] 115 data_ingestion - INFO - [DataIngestion] Total 254 records from 5 CSV files
+[ 2025-12-14 06:33:54,821 ] 143 data_ingestion - INFO - [DataIngestion] Deduplicated: removed 129 duplicates
+[ 2025-12-14 06:33:54,825 ] 182 data_ingestion - INFO - [DataIngestion] Filtered: removed 15 short texts
+[ 2025-12-14 06:33:54,841 ] 119 root - ERROR - \u2717 Pipeline failed: ("Could not convert '2025-12-10T06:09:47.620500' with type str: tried to convert to double", 'Conversion failed for column timestamp with type object')
+[ 2025-12-14 06:33:54,841 ] 133 root - ERROR - Pipeline failed - check logs for details

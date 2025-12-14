@@ -1,6 +1,8 @@
+# src/storage/storage_manager.py
 """
-src/storage/storage_manager.py
-Unified storage manager orchestrating 3-tier deduplication pipeline
+StorageManager
+Orchestrates data persistence across high-speed cache (SQLite), vector storage (ChromaDB), 
+and knowledge graph (Neo4j) with automated deduplication.
 """
 
 import logging
@@ -391,6 +393,52 @@ class StorageManager:
 
         except Exception as e:
             logger.error(f"[FEED_RETRIEVAL] Error: {e}")
+            return []
+
+        return feeds
+
+    def search_feeds(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search feeds by keyword and return enriched results.
+        """
+        try:
+            entries = self.sqlite_cache.search_entries(query, limit=limit)
+            feeds = []
+            
+            for entry in entries:
+                event_id = entry.get("event_id")
+                if not event_id:
+                    continue
+
+                try:
+                    # Try to get metadata from Chroma (optional)
+                    chroma_data = self.chromadb.collection.get(ids=[event_id])
+                    metadata = {}
+                    if chroma_data and chroma_data["metadatas"]:
+                        metadata = chroma_data["metadatas"][0]
+                    
+                    feeds.append({
+                        "event_id": event_id,
+                        "summary": entry.get("summary_preview", ""),
+                        "domain": metadata.get("domain", "unknown"),
+                        "severity": metadata.get("severity", "medium"),
+                        "timestamp": metadata.get("timestamp", entry.get("last_seen")),
+                        "source": metadata.get("source", "feed")
+                    })
+                except Exception:
+                    # Fallback if chroma fails
+                    feeds.append({
+                        "event_id": event_id,
+                        "summary": entry.get("summary_preview", ""),
+                        "domain": "unknown",
+                        "severity": "medium",
+                        "timestamp": entry.get("last_seen")
+                    })
+            
+            return feeds
+
+        except Exception as e:
+            logger.error(f"[FEED_SEARCH] Error searching for '{query}': {e}")
             return []
 
     def get_feeds_since(self, timestamp: datetime) -> List[Dict[str, Any]]:

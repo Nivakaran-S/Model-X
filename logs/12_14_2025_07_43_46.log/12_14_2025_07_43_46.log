@@ -1,0 +1,36 @@
+[ 2025-12-14 07:43:46,830 ] 45 root - INFO - 
+============================================================
+[ 2025-12-14 07:43:46,831 ] 46 root - INFO - ANOMALY DETECTION TRAINING PIPELINE
+[ 2025-12-14 07:43:46,831 ] 47 root - INFO - Started at: 2025-12-14 07:43:46
+[ 2025-12-14 07:43:46,831 ] 48 root - INFO - Models to train: ['dbscan', 'kmeans', 'hdbscan', 'isolation_forest', 'lof']
+[ 2025-12-14 07:43:46,831 ] 49 root - INFO - MLflow experiment: anomaly_detection_feeds
+[ 2025-12-14 07:43:46,831 ] 50 root - INFO - ============================================================
+
+[ 2025-12-14 07:43:46,832 ] 37 data_ingestion - INFO - [DataIngestion] Initialized
+[ 2025-12-14 07:43:46,833 ] 38 data_ingestion - INFO -   SQLite: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+[ 2025-12-14 07:43:46,833 ] 39 data_ingestion - INFO -   CSV Dir: C:\Users\LENOVO\Desktop\ModelX-Ultimate\datasets\political_feeds
+[ 2025-12-14 07:43:46,833 ] 40 data_ingestion - INFO -   Output: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion
+[ 2025-12-14 07:43:46,833 ] 55 root - INFO - Starting data ingestion...
+[ 2025-12-14 07:43:46,833 ] 193 data_ingestion - INFO - [DataIngestion] Starting data ingestion...
+[ 2025-12-14 07:43:46,834 ] 52 data_ingestion - WARNING - [DataIngestion] SQLite DB not found: C:\Users\LENOVO\Desktop\ModelX-Ultimate\data\feeds\feed_cache.db
+[ 2025-12-14 07:43:46,883 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 1 records from economic_feeds_202512.csv
+[ 2025-12-14 07:43:46,929 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 92 records from intelligence_feeds_202512.csv
+[ 2025-12-14 07:43:47,153 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 86 records from political_feeds_202512.csv
+[ 2025-12-14 07:43:47,210 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 71 records from social_feeds_202512.csv
+[ 2025-12-14 07:43:47,259 ] 107 data_ingestion - INFO - [DataIngestion] Loaded 15 records from weather_feeds_202512.csv
+[ 2025-12-14 07:43:47,293 ] 115 data_ingestion - INFO - [DataIngestion] Total 265 records from 5 CSV files
+[ 2025-12-14 07:43:47,299 ] 143 data_ingestion - INFO - [DataIngestion] Deduplicated: removed 129 duplicates
+[ 2025-12-14 07:43:47,304 ] 182 data_ingestion - INFO - [DataIngestion] Filtered: removed 15 short texts
+[ 2025-12-14 07:43:47,417 ] 235 data_ingestion - INFO - [DataIngestion] Saved 121 records to C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251214_074347.parquet
+[ 2025-12-14 07:43:47,418 ] 249 data_ingestion - INFO - [DataIngestion] \u2713 Complete: 121 records
+[ 2025-12-14 07:43:47,418 ] 57 root - INFO - \u2713 Data ingestion completed
+[ 2025-12-14 07:43:47,465 ] 39 data_validation - INFO - [DataValidation] Initialized with schema: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\data_schema\schema.yaml
+[ 2025-12-14 07:43:47,465 ] 62 root - INFO - Starting data validation...
+[ 2025-12-14 07:43:47,465 ] 195 data_validation - INFO - [DataValidation] Validating: C:\Users\LENOVO\Desktop\ModelX-Ultimate\models\anomaly-detection\artifacts\data_ingestion\ingested_data_20251214_074347.parquet
+[ 2025-12-14 07:43:47,590 ] 206 data_validation - INFO - [DataValidation] Loaded 121 records
+[ 2025-12-14 07:43:47,600 ] 227 data_validation - WARNING - [DataValidation] \u26a0 Found 2 validation issues
+[ 2025-12-14 07:43:47,601 ] 229 data_validation - WARNING -   - Column 'timestamp' has 90 null values
+[ 2025-12-14 07:43:47,601 ] 229 data_validation - WARNING -   - Column 'platform' has 10 values not in allowed list
+[ 2025-12-14 07:43:47,642 ] 260 data_validation - INFO - [DataValidation] \u2713 Complete: 31/121 valid records
+[ 2025-12-14 07:43:47,642 ] 66 root - INFO - \u2713 Data validation completed
+[ 2025-12-14 07:43:47,645 ] 73 vectorizer - INFO - [Vectorizer] Using device: cpu

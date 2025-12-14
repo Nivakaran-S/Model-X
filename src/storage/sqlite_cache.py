@@ -151,6 +151,37 @@ class SQLiteCache:
         conn.close()
         return results
 
+    def search_entries(self, query: str, limit: int = 10) -> list:
+        """
+        Search for entries containing specific text.
+        Args:
+            query: Text to search for (case-insensitive LIKE)
+            limit: Max results
+        """
+        if not query or len(query) < 2:
+            return []
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.execute(
+            "SELECT content_hash, first_seen, last_seen, event_id, summary_preview FROM seen_hashes WHERE summary_preview LIKE ? ORDER BY last_seen DESC LIMIT ?",
+            (f"%{query}%", limit),
+        )
+
+        results = []
+        for row in cursor.fetchall():
+            results.append(
+                {
+                    "content_hash": row[0],
+                    "first_seen": row[1],
+                    "last_seen": row[2],
+                    "event_id": row[3],
+                    "summary_preview": row[4],
+                }
+            )
+
+        conn.close()
+        return results
+
     def get_entries_since(self, timestamp: str) -> list:
         """
         Get entries added/updated after timestamp.

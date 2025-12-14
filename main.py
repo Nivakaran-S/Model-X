@@ -1,13 +1,10 @@
 """
 main.py
-Production-Ready Real-Time Intelligence Platform Backend
-- Uses combinedAgentGraph for multi-agent orchestration
-- Threading for concurrent graph execution and WebSocket server
-- Database-driven feed updates with polling
-- Duplicate prevention
-- District-based feed categorization for map display
-
-Updated: Resilient WebSocket handling for long scraping operations (60s+ cycles)
+Backend Service Entry Point
+- Multi-agent orchestration (LangGraph)
+- Real-time WebSocket event streaming
+- ML Model intergration and prediction pipelines
+- Automated feed aggregation and deduplication
 """
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -1113,9 +1110,24 @@ def get_trending_topics(limit: int = 10):
     """
     try:
         from src.utils.trending_detector import get_trending_now, get_spikes
-
+        # Use the global storage_manager instance defined earlier in main.py
+        # no need to import it if we are inside main.py function scope where it's visible or passed
+        # But since this is a route function, it might need global access or import.
+        # Assuming storage_manager is available globally in this file as it was initialized earlier.
+        
         trending = get_trending_now(limit=limit)
         spikes = get_spikes()
+
+        # Enrich top 5 trending topics with related feeds
+        for topic in trending[:5]:
+            keyword = topic["topic"]
+            # Search for relevant feeds (limit 2 per topic to keep payload small)
+            try:
+                related = storage_manager.search_feeds(keyword, limit=2)
+                topic["related_feeds"] = related
+            except Exception as e:
+                logger.warning(f"Error searching feeds for topic {keyword}: {e}")
+                topic["related_feeds"] = []
 
         return {
             "status": "success",
