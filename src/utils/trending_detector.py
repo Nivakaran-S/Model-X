@@ -26,6 +26,58 @@ DEFAULT_DB_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "data", "trending.db"
 )
 
+# Stopwords - common terms that should NOT trigger trending alerts
+# These are generic Sri Lankan context words that appear in almost every news item
+TRENDING_STOPWORDS = {
+    # Country/location
+    "sri",
+    "lanka",
+    "srilanka",
+    "sri lanka",
+    "colombo",
+    "lka",
+    # Government/political generic terms
+    "government",
+    "gov",
+    "political",
+    "politics",
+    "minister",
+    "ministry",
+    "parliament",
+    "president",
+    "presidential",
+    "cabinet",
+    # Economy generic terms
+    "economy",
+    "economic",
+    "economical",
+    "finance",
+    "financial",
+    # Common news words
+    "news",
+    "report",
+    "update",
+    "latest",
+    "breaking",
+    "today",
+    "announced",
+    "statement",
+    "official",
+    "officials",
+    # Time words
+    "yesterday",
+    "tomorrow",
+    "week",
+    "month",
+    "year",
+    # Generic actions
+    "said",
+    "says",
+    "told",
+    "according",
+    "sources",
+}
+
 
 class TrendingDetector:
     """
@@ -129,6 +181,11 @@ class TrendingDetector:
             domain: Domain (e.g., 'political', 'economical')
             timestamp: When the mention occurred (default: now)
         """
+        # Skip stopwords - common generic terms that shouldn't trigger trending
+        normalized_topic = topic.lower().strip()
+        if normalized_topic in TRENDING_STOPWORDS:
+            return  # Silently skip stopwords
+
         topic_hash = self._topic_hash(topic)
         ts = timestamp or datetime.now(timezone.utc)
         hour_bucket = self._get_hour_bucket(ts)
