@@ -9,7 +9,6 @@
         "economical_agent_graph": "./src/graphs/economicalAgentGraph.py:graph",
         "social_agent_graph": "./src/graphs/socialAgentGraph.py:graph",
         "intelligence_agent_graph": "./src/graphs/intelligenceAgentGraph.py:graph",
-        "vectorization_agent_graph": "./src/graphs/vectorizationAgentGraph.py:graph",
         "RogerGraph": "./src/graphs/combinedAgentGraph.py:graph"
     },
     "env": "./env"
