@@ -1,7 +1,11 @@
 # src/utils/utils.py
 """
-Utility collection for web scraping, data fetching, and external API integrations.
-Includes robust error handling, retry logic, and fallback strategies for various data sources.
+COMPLETE - All scraping tools and utilities for Roger platform
+Updated:
+- Fixed Playwright Syntax Error (removed invalid 'request_timeout').
+- Added 'Requests-First' strategy for 10x faster scraping.
+- Added 'Rainfall' PDF detection for district-level rain data.
+- Captures ALL district/city rows from the forecast table.
 """
 from urllib.parse import quote
 from datetime import datetime, timezone

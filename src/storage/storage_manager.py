@@ -1,8 +1,6 @@
-# src/storage/storage_manager.py
 """
-StorageManager
-Orchestrates data persistence across high-speed cache (SQLite), vector storage (ChromaDB), 
-and knowledge graph (Neo4j) with automated deduplication.
+src/storage/storage_manager.py
+Unified storage manager orchestrating 3-tier deduplication pipeline
 """
 
 import logging

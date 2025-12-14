@@ -1,10 +1,13 @@
 """
 main.py
-Backend Service Entry Point
-- Multi-agent orchestration (LangGraph)
-- Real-time WebSocket event streaming
-- ML Model intergration and prediction pipelines
-- Automated feed aggregation and deduplication
+Production-Ready Real-Time Intelligence Platform Backend
+- Uses combinedAgentGraph for multi-agent orchestration
+- Threading for concurrent graph execution and WebSocket server
+- Database-driven feed updates with polling
+- Duplicate prevention
+- District-based feed categorization for map display
+
+Updated: Resilient WebSocket handling for long scraping operations (60s+ cycles)
 """
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
