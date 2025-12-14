@@ -65,11 +65,9 @@ const WaterSupplyStatus = ({ waterData }: WaterSupplyStatusProps) => {
                 </div>
             )}
 
-            {fetchedAt && (
-                <p className="text-xs text-muted-foreground mt-3">
-                    Updated: {new Date(fetchedAt).toLocaleTimeString()}
-                </p>
-            )}
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+                Source: waterboard.lk (NWSDB)
+            </p>
         </Card>
     );
 };

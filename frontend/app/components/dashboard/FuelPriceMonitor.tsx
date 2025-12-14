@@ -62,11 +62,9 @@ const FuelPriceMonitor = ({ fuelData }: FuelMonitorProps) => {
                 })}
             </div>
 
-            {fetchedAt && (
-                <p className="text-xs text-muted-foreground mt-3 text-center">
-                    Source: {fuelData?.source as string || "CEYPETCO"}
-                </p>
-            )}
+            <p className="text-xs text-muted-foreground mt-3 text-center">
+                Source: ceypetco.gov.lk (CEYPETCO)
+            </p>
         </Card>
     );
 };

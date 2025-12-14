@@ -111,7 +111,7 @@ const EconomicIndicators = ({ economyData }: EconomicIndicatorsProps) => {
             </div>
 
             <p className="text-xs text-muted-foreground mt-3 text-center">
-                Source: Central Bank of Sri Lanka
+                Source: cbsl.gov.lk (Central Bank of Sri Lanka)
             </p>
         </Card>
     );

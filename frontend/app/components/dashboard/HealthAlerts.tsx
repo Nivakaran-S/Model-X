@@ -90,11 +90,9 @@ const HealthAlerts = ({ healthData }: HealthAlertsProps) => {
                 </div>
             )}
 
-            {fetchedAt && (
-                <p className="text-xs text-muted-foreground mt-2">
-                    Updated: {new Date(fetchedAt).toLocaleTimeString()}
-                </p>
-            )}
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+                Source: health.gov.lk (Ministry of Health)
+            </p>
         </Card>
     );
 };
