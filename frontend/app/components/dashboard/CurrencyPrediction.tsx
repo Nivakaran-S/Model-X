@@ -225,9 +225,14 @@ export default function CurrencyPrediction() {
 
 
                     {/* Footer */}
-                    <div className="mt-4 text-xs text-slate-500 text-center">
-                        Generated: {new Date(prediction.generated_at).toLocaleString()} |
-                        Model: {prediction.model_version}
+                    <div className="mt-4 text-xs text-slate-500 text-center space-y-1">
+                        <div>
+                            Generated: {new Date(prediction.generated_at).toLocaleString()} |
+                            Model: {prediction.model_version}
+                        </div>
+                        <div>
+                            Data: cbsl.gov.lk (CBSL) | Model: LSTM Neural Network
+                        </div>
                     </div>
                 </>
             ) : null}

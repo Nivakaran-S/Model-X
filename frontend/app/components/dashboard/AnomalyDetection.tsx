@@ -204,12 +204,17 @@ const AnomalyDetection = () => {
             </div>
 
             {/* Footer */}
-            {anomalies.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                    <span>Showing {anomalies.length} anomalous events</span>
-                    <span className="font-mono">Auto-refresh: 30s</span>
-                </div>
-            )}
+            <div className="mt-4 pt-4 border-t border-border">
+                {anomalies.length > 0 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
+                        <span>Showing {anomalies.length} anomalous events</span>
+                        <span className="font-mono">Auto-refresh: 30s</span>
+                    </div>
+                )}
+                <p className="text-xs text-muted-foreground text-center">
+                    Data: Live news feeds | Model: Isolation Forest + BERT Embeddings
+                </p>
+            </div>
         </Card>
     );
 };

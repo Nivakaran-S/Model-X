@@ -221,9 +221,14 @@ export default function WeatherPredictions() {
 
                     {/* Footer */}
                     {predictions && (
-                        <div className="mt-4 text-xs text-slate-500 text-center">
-                            Generated: {new Date(predictions.generated_at).toLocaleString()} |
-                            {predictions.total_districts} districts
+                        <div className="mt-4 text-xs text-slate-500 text-center space-y-1">
+                            <div>
+                                Generated: {new Date(predictions.generated_at).toLocaleString()} |
+                                {predictions.total_districts} districts
+                            </div>
+                            <div>
+                                Data: meteo.gov.lk (DMC) | Model: ML Weather Forecasting
+                            </div>
                         </div>
                     )}
                 </>
