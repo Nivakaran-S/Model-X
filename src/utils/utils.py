@@ -1508,24 +1508,26 @@ def tool_health_alerts() -> Dict[str, Any]:
         resp = _safe_get("https://www.health.gov.lk/", timeout=30)
         if resp:
             soup = BeautifulSoup(resp.text, "html.parser")
-            
+
             # 1. Clean up DOM - Remove navigation, footers, scripts that contain keyword noise
-            for trash in soup.find_all(["nav", "header", "footer", "script", "style", "noscript", "iframe"]):
+            for trash in soup.find_all(
+                ["nav", "header", "footer", "script", "style", "noscript", "iframe"]
+            ):
                 trash.decompose()
-                
+
             # Also remove specific menu containers if identifiable
             for menu in soup.select(".menu, .navigation, #main-menu, .top-bar"):
                 menu.decompose()
 
             # 2. Look for explicit alerts first (Marquees, Alert Banners)
             explicit_alerts = []
-            
+
             # Check marquees (common on govt sites)
             for marquee in soup.find_all("marquee"):
                 text = marquee.get_text(strip=True)
                 if text and len(text) > 20 and "welcome" not in text.lower():
                     explicit_alerts.append(text)
-                    
+
             # Check alert divs
             for alert_div in soup.select(".alert, .notice, .warning, .news-ticker"):
                 text = alert_div.get_text(strip=True)
@@ -1533,44 +1535,50 @@ def tool_health_alerts() -> Dict[str, Any]:
                     explicit_alerts.append(text)
 
             # Add explicit alerts found
-            for alert_text in explicit_alerts[:3]: # Limit to 3
+            for alert_text in explicit_alerts[:3]:  # Limit to 3
                 # Filter out "Circular" noise which is document listing, not public health alert
                 if "circular" not in alert_text.lower():
-                    result["alerts"].append({
-                        "type": "health_notice",
-                        "text": alert_text[:200],  # Truncate clean text
-                        "severity": "medium"
-                    })
+                    result["alerts"].append(
+                        {
+                            "type": "health_notice",
+                            "text": alert_text[:200],  # Truncate clean text
+                            "severity": "medium",
+                        }
+                    )
 
             # 3. If no explicit alerts, do a safer text search on remaining body content
             if not result["alerts"]:
                 # Get text only from main content area if possible
-                main_content = soup.select_one("main, #content, .container, body") or soup.body
+                main_content = (
+                    soup.select_one("main, #content, .container, body") or soup.body
+                )
                 page_text = main_content.get_text(separator=" ", strip=True).lower()
-                
+
                 # Check for outbreak keywords in context
                 outbreak_keywords = [
                     "dengue outbreak",
                     "epidemic alert",
                     "health emergency",
                     "spread of disease",
-                    "influenza warning"
+                    "influenza warning",
                 ]
-                
+
                 for kw in outbreak_keywords:
                     if kw in page_text:
                         idx = page_text.find(kw)
                         # Extract sentence-like context
                         context = page_text[max(0, idx - 20) : idx + 150]
                         # Clean up
-                        context = " ".join(context.split()) 
-                        
+                        context = " ".join(context.split())
+
                         if len(context) > 20 and "circular" not in context:
-                            result["alerts"].append({
-                                "type": "health_notice",
-                                "text": f"...{context}...",
-                                "severity": "medium"
-                            })
+                            result["alerts"].append(
+                                {
+                                    "type": "health_notice",
+                                    "text": f"...{context}...",
+                                    "severity": "medium",
+                                }
+                            )
                             break
 
             # 4. Check for Dengue stats specifically
@@ -1578,23 +1586,27 @@ def tool_health_alerts() -> Dict[str, Any]:
             if dengue_match:
                 try:
                     result["dengue"]["weekly_cases"] = int(dengue_match.group(1))
-                    logger.info(f"[HEALTH] Found Dengue cases: {result['dengue']['weekly_cases']}")
+                    logger.info(
+                        f"[HEALTH] Found Dengue cases: {result['dengue']['weekly_cases']}"
+                    )
                 except ValueError:
                     pass
 
     except Exception as e:
         logger.warning(f"[HEALTH] Scraping error: {e}")
         # Don't fail completely, return baseline
-        
+
     # fallback: If still no alerts, maybe add seasonal one
     if not result["alerts"]:
         current_month = utc_now().month
         if current_month in [5, 6, 10, 11, 12]:  # Monsoon = mosquito season
-            result["advisories"].append({
-                "type": "seasonal",
-                "text": "Mosquito Control: Remove stagnant water to prevent Dengue breeding.",
-                "severity": "medium",
-            })
+            result["advisories"].append(
+                {
+                    "type": "seasonal",
+                    "text": "Mosquito Control: Remove stagnant water to prevent Dengue breeding.",
+                    "severity": "medium",
+                }
+            )
 
     # Update cache
     _health_cache = result
@@ -1869,24 +1881,37 @@ def tool_water_supply_alerts() -> Dict[str, Any]:
         resp = _safe_get("https://www.waterboard.lk/", timeout=30)
         if resp:
             soup = BeautifulSoup(resp.text, "html.parser")
-            
+
             # 1. Clean DOM - Remove typically noisy elements
-            for trash in soup.find_all(["nav", "header", "footer", "script", "style", "noscript", "iframe", "form"]):
+            for trash in soup.find_all(
+                [
+                    "nav",
+                    "header",
+                    "footer",
+                    "script",
+                    "style",
+                    "noscript",
+                    "iframe",
+                    "form",
+                ]
+            ):
                 trash.decompose()
-            
+
             # Remove menu containers explicitly
-            for menu in soup.select(".menu, .navigation, #main-menu, .top-bar, .service-block"):
+            for menu in soup.select(
+                ".menu, .navigation, #main-menu, .top-bar, .service-block"
+            ):
                 menu.decompose()
 
             # 2. Look for explicit alerts (Marquee is common on SL govt sites)
             alerts_found = []
-            
+
             # Check marquees
             for marquee in soup.find_all("marquee"):
                 text = marquee.get_text(separator=" ", strip=True)
                 if len(text) > 10:
                     alerts_found.append({"text": text, "source": "ticker"})
-            
+
             # Check alert classes
             for alert in soup.select(".alert, .notice, .warning, .news-ticker"):
                 text = alert.get_text(separator=" ", strip=True)
@@ -1895,54 +1920,98 @@ def tool_water_supply_alerts() -> Dict[str, Any]:
 
             # 3. If no explicit alerts, search body text with STRICTER validation
             if not alerts_found:
-                 main_content = soup.select_one("main, #content, .container, body") or soup.body
-                 if main_content:
+                main_content = (
+                    soup.select_one("main, #content, .container, body") or soup.body
+                )
+                if main_content:
                     # Get paragraph texts mainly
                     for p in main_content.find_all(["p", "div", "span"]):
                         text = p.get_text(strip=True)
-                        if len(text) < 20 or len(text) > 300: # Ignore too short/long blocks
+                        if (
+                            len(text) < 20 or len(text) > 300
+                        ):  # Ignore too short/long blocks
                             continue
-                            
+
                         text_lower = text.lower()
-                        
+
                         # Must have explicit "water" context AND disruption keyword
-                        has_water = any(w in text_lower for w in ["water supply", "water cut", "nwsdb", "water board"])
-                        has_issue = any(w in text_lower for w in ["interruption", "disruption", "suspended", "stopped", "low pressure"])
-                        
+                        has_water = any(
+                            w in text_lower
+                            for w in [
+                                "water supply",
+                                "water cut",
+                                "nwsdb",
+                                "water board",
+                            ]
+                        )
+                        has_issue = any(
+                            w in text_lower
+                            for w in [
+                                "interruption",
+                                "disruption",
+                                "suspended",
+                                "stopped",
+                                "low pressure",
+                            ]
+                        )
+
                         # Stopwords that indicate this is NOT an alert (slogans, payment info, etc)
-                        is_garbage = any(w in text_lower for w in ["benefits", "payment", "service without", "bill", "vision", "mission"])
-                        
+                        is_garbage = any(
+                            w in text_lower
+                            for w in [
+                                "benefits",
+                                "payment",
+                                "service without",
+                                "bill",
+                                "vision",
+                                "mission",
+                            ]
+                        )
+
                         if has_water and has_issue and not is_garbage:
-                            alerts_found.append({"text": text, "source": "content_match"})
+                            alerts_found.append(
+                                {"text": text, "source": "content_match"}
+                            )
 
             # Process found alerts
             for item in alerts_found:
                 text = item["text"]
                 text_lower = text.lower()
-                
+
                 # Double check garbage filtering
-                if any(w in text_lower for w in ["benefits", "payment", "check out", "click here"]):
+                if any(
+                    w in text_lower
+                    for w in ["benefits", "payment", "check out", "click here"]
+                ):
                     continue
 
                 result["status"] = "disruptions_reported"
-                
+
                 # Extract Area
                 area = "Multiple areas"
                 # Common major areas regex
-                area_match = re.search(r"(colombo|gampaha|kandy|galle|matara|jaffna|kurunegala|ratnapura|kalutara|negombo)", text_lower, re.I)
+                area_match = re.search(
+                    r"(colombo|gampaha|kandy|galle|matara|jaffna|kurunegala|ratnapura|kalutara|negombo)",
+                    text_lower,
+                    re.I,
+                )
                 if area_match:
                     area = area_match.group(1).title()
-                
+
                 # Deduplicate
                 if not any(d["details"] == text for d in result["active_disruptions"]):
-                    result["active_disruptions"].append({
-                        "area": area,
-                        "type": "Water Disruption",
-                        "details": text[:200] + ("..." if len(text) > 200 else ""),
-                        "severity": "medium"
-                    })
-            
-            logger.info(f"[WATER] Fetched - Disruptions: {len(result['active_disruptions'])}")
+                    result["active_disruptions"].append(
+                        {
+                            "area": area,
+                            "type": "Water Disruption",
+                            "details": text[:200] + ("..." if len(text) > 200 else ""),
+                            "severity": "medium",
+                        }
+                    )
+
+            logger.info(
+                f"[WATER] Fetched - Disruptions: {len(result['active_disruptions'])}"
+            )
 
         # If no disruptions found via scraping, report normal
         if not result["active_disruptions"]:

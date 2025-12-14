@@ -382,34 +382,34 @@ class RogerRAG:
         )
 
         # DIVERSITY RERANKING
-        # Ensure we don't just show 5 gazettes. 
+        # Ensure we don't just show 5 gazettes.
         # We want a mix of domains if possible.
         unique_domains = {}
         diverse_docs = []
-        
+
         # Priority domains for situational awareness
-        priority_domains = {'intelligence', 'social', 'economical', 'meteorological'}
-        
+        priority_domains = {"intelligence", "social", "economical", "meteorological"}
+
         for doc in raw_docs:
             domain = doc.get("domain", "unknown")
             platform = doc.get("metadata", {}).get("platform", "unknown")
-            
+
             # Key to track redundancy: domain + platform
             key = f"{domain}_{platform}"
-            
-            # Allow max 2 docs per domain/platform combo, 
+
+            # Allow max 2 docs per domain/platform combo,
             # UNLESS it's a priority domain with high similarity (>0.4)
             limit = 2
-            if domain in priority_domains and doc['similarity'] > 0.4:
+            if domain in priority_domains and doc["similarity"] > 0.4:
                 limit = 3
-                
+
             if unique_domains.get(key, 0) < limit:
                 diverse_docs.append(doc)
                 unique_domains[key] = unique_domains.get(key, 0) + 1
-                
+
             if len(diverse_docs) >= 7:  # Stop after getting 7 diverse docs
                 break
-                
+
         docs = diverse_docs
 
         if not docs:

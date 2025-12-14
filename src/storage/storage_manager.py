@@ -402,7 +402,7 @@ class StorageManager:
         try:
             entries = self.sqlite_cache.search_entries(query, limit=limit)
             feeds = []
-            
+
             for entry in entries:
                 event_id = entry.get("event_id")
                 if not event_id:
@@ -414,25 +414,31 @@ class StorageManager:
                     metadata = {}
                     if chroma_data and chroma_data["metadatas"]:
                         metadata = chroma_data["metadatas"][0]
-                    
-                    feeds.append({
-                        "event_id": event_id,
-                        "summary": entry.get("summary_preview", ""),
-                        "domain": metadata.get("domain", "unknown"),
-                        "severity": metadata.get("severity", "medium"),
-                        "timestamp": metadata.get("timestamp", entry.get("last_seen")),
-                        "source": metadata.get("source", "feed")
-                    })
+
+                    feeds.append(
+                        {
+                            "event_id": event_id,
+                            "summary": entry.get("summary_preview", ""),
+                            "domain": metadata.get("domain", "unknown"),
+                            "severity": metadata.get("severity", "medium"),
+                            "timestamp": metadata.get(
+                                "timestamp", entry.get("last_seen")
+                            ),
+                            "source": metadata.get("source", "feed"),
+                        }
+                    )
                 except Exception:
                     # Fallback if chroma fails
-                    feeds.append({
-                        "event_id": event_id,
-                        "summary": entry.get("summary_preview", ""),
-                        "domain": "unknown",
-                        "severity": "medium",
-                        "timestamp": entry.get("last_seen")
-                    })
-            
+                    feeds.append(
+                        {
+                            "event_id": event_id,
+                            "summary": entry.get("summary_preview", ""),
+                            "domain": "unknown",
+                            "severity": "medium",
+                            "timestamp": entry.get("last_seen"),
+                        }
+                    )
+
             return feeds
 
         except Exception as e:

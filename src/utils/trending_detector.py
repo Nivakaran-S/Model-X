@@ -76,10 +76,26 @@ TRENDING_STOPWORDS = {
     "time",
     "date",
     # Days
-    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
     # Months
-    "january", "february", "march", "april", "may", "june", 
-    "july", "august", "september", "october", "november", "december",
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
     # Generic actions/descriptions
     "said",
     "says",
@@ -116,7 +132,11 @@ TRENDING_STOPWORDS = {
     "nation",
     "country",
     "state",
-    "western", "eastern", "southern", "northern", "central",
+    "western",
+    "eastern",
+    "southern",
+    "northern",
+    "central",
 }
 
 
