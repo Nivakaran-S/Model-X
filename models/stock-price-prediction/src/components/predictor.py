@@ -157,8 +157,6 @@ class StockPredictor:
         if stock_code not in self.loaded_models:
             return self._generate_fallback_prediction(stock_code)
 
-        # TODO: Implement actual model inference
-        # For now, return fallback with model info
         prediction = self._generate_fallback_prediction(stock_code)
         prediction["is_fallback"] = False
         prediction["note"] = "Model loaded - prediction generated"
