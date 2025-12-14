@@ -26,6 +26,9 @@ interface ModelStatus {
     batch_threshold: number;
 }
 
+// Use environment variable for API base URL
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000";
+
 const AnomalyDetection = () => {
     const [anomalies, setAnomalies] = useState<AnomalyEvent[]>([]);
     const [modelStatus, setModelStatus] = useState<ModelStatus | null>(null);
@@ -36,8 +39,8 @@ const AnomalyDetection = () => {
         try {
             setLoading(true);
             const [anomalyRes, statusRes] = await Promise.all([
-                fetch('http://localhost:8000/api/anomalies?limit=20'),
-                fetch('http://localhost:8000/api/model/status')
+                fetch(`${API_BASE}/api/anomalies?limit=20`),
+                fetch(`${API_BASE}/api/model/status`)
             ]);
 
             const anomalyData = await anomalyRes.json();
